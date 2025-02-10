@@ -96,7 +96,7 @@ class _LoginPageState extends State<LoginPage> {
     return const Column(
       children: [
         Text(
-          "Welcome Back",
+          "Login To Your Account",
           style: TextStyle(fontSize: 40, fontWeight: FontWeight.bold),
         ),
         Text("Enter your credentials to login"),
@@ -171,8 +171,8 @@ class _LoginPageState extends State<LoginPage> {
           child: _isLoading
               ? const CircularProgressIndicator(color: Colors.white)
               : const Text(
-            "Login",
-            style: TextStyle(fontSize: 20),
+            "Sign In",
+            style: TextStyle(fontSize: 20, color: Colors.black),
           ),
         )
       ],
