@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'auth/screens/signup_page.dart';
 import 'screens/home_screen.dart';
 import 'screens/lost_item_screen.dart';
 import 'screens/found_item_screen.dart';
@@ -25,6 +26,7 @@ class MyApp extends StatelessWidget {
       routes: {
         '/home': (context) => const MainNavigator(),
         '/login': (context) => const LoginPage(),
+        '/signup': (context) => const SignupPage(),
       },
     );
   }
