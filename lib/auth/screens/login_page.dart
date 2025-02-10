@@ -17,6 +17,7 @@ class _LoginPageState extends State<LoginPage> {
   final _storage = const FlutterSecureStorage();
   bool _isLoading = false;
   String? _errorMessage;
+  bool _isHidden = true; // Track password visibility
 
   Future<void> _login() async {
     if (!_formKey.currentState!.validate()) return;
@@ -42,7 +43,6 @@ class _LoginPageState extends State<LoginPage> {
         await _storage.write(key: 'jwt_token', value: data['token']);
 
         if (mounted) {
-
           Navigator.pushReplacementNamed(context, '/home');
         }
       } else {
@@ -69,6 +69,13 @@ class _LoginPageState extends State<LoginPage> {
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
+  }
+
+  // Toggle the password visibility
+  void _togglePasswordView() {
+    setState(() {
+      _isHidden = !_isHidden; // Toggle the visibility
+    });
   }
 
   @override
@@ -151,8 +158,14 @@ class _LoginPageState extends State<LoginPage> {
             fillColor: Colors.purple.withOpacity(0.1),
             filled: true,
             prefixIcon: const Icon(Icons.password),
+            suffixIcon: GestureDetector(
+              onTap: _togglePasswordView,
+              child: Icon(
+                _isHidden ? Icons.visibility : Icons.visibility_off,
+              ),
+            ),
           ),
-          obscureText: true,
+          obscureText: _isHidden, // Use the _isHidden state to control password visibility
           validator: (value) {
             if (value == null || value.isEmpty) {
               return 'Please enter your password';
