@@ -16,11 +16,9 @@ class _SignupPageState extends State<SignupPage> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
-  final _verificationCodeController = TextEditingController();
   final _storage = const FlutterSecureStorage();
 
   bool _isLoading = false;
-  bool _showVerification = false;
   String? _errorMessage;
   bool _isPasswordHidden = true;
   bool _isConfirmPasswordHidden = true;
@@ -45,100 +43,25 @@ class _SignupPageState extends State<SignupPage> {
       );
 
       if (response.statusCode == 200) {
-        setState(() {
-          _showVerification = true;
-          _isLoading = false;
-        });
-      } else {
-        final error = json.decode(response.body);
-        setState(() {
-          _errorMessage = error['message'] ?? 'Registration failed. Please try again.';
-          _isLoading = false;
-        });
-      }
-    } catch (e) {
-      setState(() {
-        _errorMessage = 'Connection error. Please try again.';
-        _isLoading = false;
-      });
-    }
-  }
-
-  Future<void> _verifyEmail() async {
-    if (_verificationCodeController.text.isEmpty) {
-      setState(() {
-        _errorMessage = 'Please enter verification code';
-      });
-      return;
-    }
-
-    setState(() {
-      _isLoading = true;
-      _errorMessage = null;
-    });
-
-    try {
-      final response = await http.post(
-        Uri.parse('http://localhost:8081/auth/verify'),
-        headers: {'Content-Type': 'application/json'},
-        body: json.encode({
-          'email': _emailController.text,
-          'verificationCode': _verificationCodeController.text,
-        }),
-      );
-
-      if (response.statusCode == 200) {
         if (mounted) {
-          Navigator.pushReplacementNamed(context, '/login');
+          Navigator.pushReplacementNamed(
+            context,
+            '/verification',
+            arguments: _emailController.text,
+          );
         }
       } else {
         final error = json.decode(response.body);
-        setState(() {
-          _errorMessage = error['message'] ?? 'Verification failed. Please try again.';
-        });
+        if (mounted) {
+          setState(() {
+            _errorMessage = error['message'] ?? 'Registration failed. Please try again.';
+            _isLoading = false;
+          });
+        }
       }
     } catch (e) {
       setState(() {
         _errorMessage = 'Connection error. Please try again.';
-      });
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-      }
-    }
-  }
-
-  Future<void> _resendCode() async {
-    setState(() {
-      _isLoading = true;
-      _errorMessage = null;
-    });
-
-    try {
-      final response = await http.post(
-        Uri.parse('http://localhost:8081/auth/resend'),
-        headers: {'Content-Type': 'application/json'},
-        body: _emailController.text,
-      );
-
-      if (response.statusCode == 200) {
-        setState(() {
-          _errorMessage = 'Verification code resent successfully';
-        });
-      } else {
-        final error = json.decode(response.body);
-        setState(() {
-          _errorMessage = error['message'] ?? 'Failed to resend code. Please try again.';
-        });
-      }
-    } catch (e) {
-      setState(() {
-        _errorMessage = 'Connection error. Please try again.';
-      });
-    } finally {
-      setState(() {
         _isLoading = false;
       });
     }
@@ -150,7 +73,6 @@ class _SignupPageState extends State<SignupPage> {
     _emailController.dispose();
     _passwordController.dispose();
     _confirmPasswordController.dispose();
-    _verificationCodeController.dispose();
     super.dispose();
   }
 
@@ -166,9 +88,7 @@ class _SignupPageState extends State<SignupPage> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: _showVerification
-                  ? _buildVerificationForm()
-                  : _buildSignupForm(),
+              children: _buildSignupForm(),
             ),
           ),
         ),
@@ -294,60 +214,6 @@ class _SignupPageState extends State<SignupPage> {
             ),
           ),
         ],
-      ),
-    ];
-  }
-
-  List<Widget> _buildVerificationForm() {
-    return [
-      const Text(
-        "Verify Email",
-        style: TextStyle(
-          fontSize: 30,
-          fontWeight: FontWeight.bold,
-        ),
-        textAlign: TextAlign.center,
-      ),
-      const SizedBox(height: 20),
-      if (_errorMessage != null)
-        Text(
-          _errorMessage!,
-          style: const TextStyle(color: Colors.red),
-          textAlign: TextAlign.center,
-        ),
-      const SizedBox(height: 20),
-      Text(
-        "Please enter the verification code sent to ${_emailController.text}",
-        textAlign: TextAlign.center,
-      ),
-      const SizedBox(height: 20),
-      _buildTextField(
-        controller: _verificationCodeController,
-        hintText: "Verification Code",
-        icon: Icons.security,
-      ),
-      const SizedBox(height: 30),
-      ElevatedButton(
-        onPressed: _isLoading ? null : _verifyEmail,
-        style: ElevatedButton.styleFrom(
-          shape: const StadiumBorder(),
-          padding: const EdgeInsets.symmetric(vertical: 16),
-          backgroundColor: Colors.purple,
-        ),
-        child: _isLoading
-            ? const CircularProgressIndicator(color: Colors.white)
-            : const Text(
-          "Verify",
-          style: TextStyle(fontSize: 20, color: Colors.white),
-        ),
-      ),
-      const SizedBox(height: 20),
-      TextButton(
-        onPressed: _isLoading ? null : _resendCode,
-        child: const Text(
-          "Resend Code",
-          style: TextStyle(color: Colors.purple),
-        ),
       ),
     ];
   }

@@ -6,6 +6,7 @@ import 'screens/found_item_screen.dart';
 import 'screens/profile_screen.dart';
 import 'auth/screens/login_page.dart';
 import 'auth/services/auth_service.dart';
+import 'auth/screens/verification_page.dart';
 
 void main() {
   runApp(const MyApp());
@@ -27,6 +28,9 @@ class MyApp extends StatelessWidget {
         '/home': (context) => const MainNavigator(),
         '/login': (context) => const LoginPage(),
         '/signup': (context) => const SignupPage(),
+        '/verification': (context) => VerificationPage(
+            email: ModalRoute.of(context)!.settings.arguments as String
+        ),
       },
     );
   }
