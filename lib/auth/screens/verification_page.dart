@@ -16,6 +16,47 @@ class _VerificationPageState extends State<VerificationPage> {
   bool _isLoading = false;
   String? _errorMessage;
 
+  Future<void> _verifyCode() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      final response = await http.post(
+        Uri.parse('http://localhost:8081/auth/verify'),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({
+          'email': widget.email,
+          'verificationCode': _codeController.text,
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        if (mounted) {
+          Navigator.pushReplacementNamed(context, '/login');
+        }
+      } else {
+        final error = json.decode(response.body);
+        setState(() {
+          _errorMessage = error['message'] ?? 'Verification failed';
+        });
+      }
+    } catch (e) {
+      setState(() {
+        _errorMessage = 'Connection error. Please try again.';
+      });
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
   Future<void> _resendCode() async {
     setState(() {
       _isLoading = true;
@@ -114,9 +155,7 @@ class _VerificationPageState extends State<VerificationPage> {
               ),
               const SizedBox(height: 20),
               ElevatedButton(
-                onPressed: _isLoading ? null : () {
-                  // Handle verification submission
-                },
+                onPressed: _isLoading ? null : _verifyCode,  // Changed this line
                 style: ElevatedButton.styleFrom(
                   shape: const StadiumBorder(),
                   padding: const EdgeInsets.symmetric(vertical: 16),
