@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import '../services/auth_service.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -14,10 +15,10 @@ class _LoginPageState extends State<LoginPage> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
-  final _storage = const FlutterSecureStorage();
+  final _authService = AuthService();
   bool _isLoading = false;
   String? _errorMessage;
-  bool _isHidden = true; // Track password visibility
+  bool _isHidden = true;
 
   Future<void> _login() async {
     if (!_formKey.currentState!.validate()) return;
@@ -28,36 +29,25 @@ class _LoginPageState extends State<LoginPage> {
     });
 
     try {
-      final response = await http.post(
-        Uri.parse('http://localhost:8081/auth/login'),
-        headers: {'Content-Type': 'application/json'},
-        body: json.encode({
-          'email': _emailController.text,
-          'password': _passwordController.text,
-        }),
+      final result = await _authService.login(
+        _emailController.text,
+        _passwordController.text,
       );
 
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-
-        await _storage.write(key: 'jwt_token', value: data['token']);
-
-        if (mounted) {
+      if (mounted) {
+        if (result['success']) {
           Navigator.pushReplacementNamed(context, '/home');
+        } else {
+          setState(() {
+            _errorMessage = result['message'];
+            _isLoading = false;
+          });
         }
-      } else {
-        final error = json.decode(response.body);
-        setState(() {
-          _errorMessage = error['message'] ?? 'Login failed. Please try again.';
-        });
       }
     } catch (e) {
-      setState(() {
-        _errorMessage = 'Connection error. Please try again.';
-      });
-    } finally {
       if (mounted) {
         setState(() {
+          _errorMessage = 'Connection error. Please try again.';
           _isLoading = false;
         });
       }
@@ -71,10 +61,9 @@ class _LoginPageState extends State<LoginPage> {
     super.dispose();
   }
 
-  // Toggle the password visibility
   void _togglePasswordView() {
     setState(() {
-      _isHidden = !_isHidden; // Toggle the visibility
+      _isHidden = !_isHidden;
     });
   }
 
@@ -165,7 +154,7 @@ class _LoginPageState extends State<LoginPage> {
               ),
             ),
           ),
-          obscureText: _isHidden, // Use the _isHidden state to control password visibility
+          obscureText: _isHidden,
           validator: (value) {
             if (value == null || value.isEmpty) {
               return 'Please enter your password';
@@ -185,7 +174,7 @@ class _LoginPageState extends State<LoginPage> {
               ? const CircularProgressIndicator(color: Colors.white)
               : const Text(
             "Sign In",
-            style: TextStyle(fontSize: 20, color: Colors.black),
+            style: TextStyle(fontSize: 20, color: Colors.white),
           ),
         )
       ],

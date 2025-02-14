@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
 import 'dart:convert';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import '../services/auth_service.dart';
 
 class SignupPage extends StatefulWidget {
   const SignupPage({super.key});
@@ -16,7 +15,7 @@ class _SignupPageState extends State<SignupPage> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
-  final _storage = const FlutterSecureStorage();
+  final _authService = AuthService();
 
   bool _isLoading = false;
   String? _errorMessage;
@@ -32,38 +31,33 @@ class _SignupPageState extends State<SignupPage> {
     });
 
     try {
-      final response = await http.post(
-        Uri.parse('http://localhost:8081/auth/signup'),
-        headers: {'Content-Type': 'application/json'},
-        body: json.encode({
-          'username': _usernameController.text,
-          'email': _emailController.text,
-          'password': _passwordController.text,
-        }),
+      final result = await _authService.register(
+        _emailController.text,
+        _passwordController.text,
+        _usernameController.text,
       );
 
-      if (response.statusCode == 200) {
-        if (mounted) {
+      if (mounted) {
+        if (result['success']) {
           Navigator.pushReplacementNamed(
             context,
             '/verification',
             arguments: _emailController.text,
           );
-        }
-      } else {
-        final error = json.decode(response.body);
-        if (mounted) {
+        } else {
           setState(() {
-            _errorMessage = error['message'] ?? 'Registration failed. Please try again.';
+            _errorMessage = result['message'];
             _isLoading = false;
           });
         }
       }
     } catch (e) {
-      setState(() {
-        _errorMessage = 'Connection error. Please try again.';
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _errorMessage = 'Connection error. Please try again.';
+          _isLoading = false;
+        });
+      }
     }
   }
 

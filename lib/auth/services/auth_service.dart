@@ -1,16 +1,17 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import '../models/user.dart';
+import '../responses/login_response.dart';
 
 class AuthService {
-  static const String _baseUrl = 'http://localhost:8081/auth';
-  final _storage = const FlutterSecureStorage();
-
+  static const String baseUrl = 'http://localhost:8081/auth';
+  final storage = const FlutterSecureStorage();
 
   Future<Map<String, dynamic>> login(String email, String password) async {
     try {
       final response = await http.post(
-        Uri.parse('$_baseUrl/login'),
+        Uri.parse('$baseUrl/login'),
         headers: {'Content-Type': 'application/json'},
         body: json.encode({
           'email': email,
@@ -20,7 +21,12 @@ class AuthService {
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        await _storage.write(key: 'jwt_token', value: data['token']);
+        await storage.write(key: 'jwt_token', value: data['token']);
+        // Store token expiration
+        await storage.write(
+            key: 'token_expiry',
+            value: (DateTime.now().millisecondsSinceEpoch + data['expiresIn']).toString()
+        );
         return {'success': true, 'data': data};
       } else {
         final error = json.decode(response.body);
@@ -37,11 +43,10 @@ class AuthService {
     }
   }
 
-
   Future<Map<String, dynamic>> register(String email, String password, String username) async {
     try {
       final response = await http.post(
-        Uri.parse('$_baseUrl/signup'),
+        Uri.parse('$baseUrl/signup'),
         headers: {'Content-Type': 'application/json'},
         body: json.encode({
           'email': email,
@@ -67,11 +72,10 @@ class AuthService {
     }
   }
 
-
   Future<Map<String, dynamic>> verifyEmail(String email, String code) async {
     try {
       final response = await http.post(
-        Uri.parse('$_baseUrl/verify'),
+        Uri.parse('$baseUrl/verify'),
         headers: {'Content-Type': 'application/json'},
         body: json.encode({
           'email': email,
@@ -96,19 +100,43 @@ class AuthService {
     }
   }
 
-
   Future<String?> getToken() async {
-    return await _storage.read(key: 'jwt_token');
+    return await storage.read(key: 'jwt_token');
   }
-
 
   Future<bool> isLoggedIn() async {
     final token = await getToken();
-    return token != null;
+    if (token == null) return false;
+
+    // Check token expiration
+    final expiryString = await storage.read(key: 'token_expiry');
+    if (expiryString == null) return false;
+
+    final expiry = int.parse(expiryString);
+    return DateTime.now().millisecondsSinceEpoch < expiry;
   }
 
-
   Future<void> logout() async {
-    await _storage.delete(key: 'jwt_token');
+    await storage.delete(key: 'jwt_token');
+    await storage.delete(key: 'token_expiry');
+  }
+
+  Future<User?> getCurrentUser() async {
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/user/me'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ${await getToken()}'
+        },
+      );
+
+      if (response.statusCode == 200) {
+        return User.fromJson(json.decode(response.body));
+      }
+      return null;
+    } catch (e) {
+      return null;
+    }
   }
 }
