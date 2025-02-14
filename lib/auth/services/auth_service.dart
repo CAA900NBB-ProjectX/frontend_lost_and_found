@@ -1,28 +1,50 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import '../models/user.dart';
 import '../responses/login_response.dart';
 
 class AuthService {
-  static const String baseUrl = 'http://localhost:8081/auth';
+  // Dynamic base URL based on platform
+  static String get baseUrl {
+    if (kIsWeb) {
+      return 'http://localhost:8081/auth';  // For web
+    } else {
+      return 'http://10.0.2.2:8081/auth';   // For Android emulator
+    }
+  }
+
   final storage = const FlutterSecureStorage();
+
+  // Headers for all requests
+  Map<String, String> get _headers => {
+    'Content-Type': 'application/json',
+    'Accept': '*/*',
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+    'Access-Control-Allow-Headers': 'Origin, Content-Type, Accept',
+  };
 
   Future<Map<String, dynamic>> login(String email, String password) async {
     try {
+      print('Attempting login to: ${Uri.parse('$baseUrl/login')}');
+
       final response = await http.post(
         Uri.parse('$baseUrl/login'),
-        headers: {'Content-Type': 'application/json'},
+        headers: _headers,
         body: json.encode({
           'email': email,
           'password': password,
         }),
       );
 
+      print('Response status: ${response.statusCode}');
+      print('Response body: ${response.body}');
+
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         await storage.write(key: 'jwt_token', value: data['token']);
-        // Store token expiration
         await storage.write(
             key: 'token_expiry',
             value: (DateTime.now().millisecondsSinceEpoch + data['expiresIn']).toString()
@@ -36,6 +58,7 @@ class AuthService {
         };
       }
     } catch (e) {
+      print('Login error: $e');
       return {
         'success': false,
         'message': 'Connection error. Please try again.'
@@ -45,15 +68,20 @@ class AuthService {
 
   Future<Map<String, dynamic>> register(String email, String password, String username) async {
     try {
+      print('Attempting registration to: ${Uri.parse('$baseUrl/signup')}');
+
       final response = await http.post(
         Uri.parse('$baseUrl/signup'),
-        headers: {'Content-Type': 'application/json'},
+        headers: _headers,
         body: json.encode({
           'email': email,
           'password': password,
           'username': username,
         }),
       );
+
+      print('Response status: ${response.statusCode}');
+      print('Response body: ${response.body}');
 
       if (response.statusCode == 200) {
         return {'success': true, 'data': json.decode(response.body)};
@@ -65,6 +93,7 @@ class AuthService {
         };
       }
     } catch (e) {
+      print('Registration error: $e');
       return {
         'success': false,
         'message': 'Connection error. Please try again.'
@@ -74,14 +103,19 @@ class AuthService {
 
   Future<Map<String, dynamic>> verifyEmail(String email, String code) async {
     try {
+      print('Attempting verification to: ${Uri.parse('$baseUrl/verify')}');
+
       final response = await http.post(
         Uri.parse('$baseUrl/verify'),
-        headers: {'Content-Type': 'application/json'},
+        headers: _headers,
         body: json.encode({
           'email': email,
           'verificationCode': code,
         }),
       );
+
+      print('Response status: ${response.statusCode}');
+      print('Response body: ${response.body}');
 
       if (response.statusCode == 200) {
         return {'success': true};
@@ -93,6 +127,7 @@ class AuthService {
         };
       }
     } catch (e) {
+      print('Verification error: $e');
       return {
         'success': false,
         'message': 'Connection error. Please try again.'
@@ -123,19 +158,25 @@ class AuthService {
 
   Future<User?> getCurrentUser() async {
     try {
+      print('Attempting to get current user');
+
       final response = await http.get(
         Uri.parse('$baseUrl/user/me'),
         headers: {
-          'Content-Type': 'application/json',
+          ..._headers,
           'Authorization': 'Bearer ${await getToken()}'
         },
       );
+
+      print('Response status: ${response.statusCode}');
+      print('Response body: ${response.body}');
 
       if (response.statusCode == 200) {
         return User.fromJson(json.decode(response.body));
       }
       return null;
     } catch (e) {
+      print('Get current user error: $e');
       return null;
     }
   }
