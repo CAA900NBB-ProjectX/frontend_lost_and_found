@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'auth/screens/signup_page.dart';
-import 'screens/home_screen.dart';
+import 'screens/home/home_screen.dart';
 import 'screens/lost_item_screen.dart';
 import 'screens/found_item_screen.dart';
 import 'screens/profile_screen.dart';
@@ -11,7 +11,6 @@ import 'auth/screens/verification_page.dart';
 void main() {
   runApp(const MyApp());
 }
-
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
@@ -31,6 +30,7 @@ class MyApp extends StatelessWidget {
         '/verification': (context) => VerificationPage(
             email: ModalRoute.of(context)!.settings.arguments as String
         ),
+        '/test': (context) => const HomeScreen(),
       },
     );
   }

@@ -1,7 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
-import 'dart:convert';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../services/auth_service.dart';
 
 class LoginPage extends StatefulWidget {
@@ -18,7 +15,7 @@ class _LoginPageState extends State<LoginPage> {
   final _authService = AuthService();
   bool _isLoading = false;
   String? _errorMessage;
-  bool _isHidden = true;
+  bool _isPasswordHidden = true;
 
   Future<void> _login() async {
     if (!_formKey.currentState!.validate()) return;
@@ -30,16 +27,18 @@ class _LoginPageState extends State<LoginPage> {
 
     try {
       final result = await _authService.login(
-        _emailController.text,
+        _emailController.text.trim(),
         _passwordController.text,
       );
 
       if (mounted) {
-        if (result['success']) {
+        if (result.containsKey('success') && result['success']) {
           Navigator.pushReplacementNamed(context, '/home');
         } else {
           setState(() {
-            _errorMessage = result['message'];
+            _errorMessage = result.containsKey('message')
+                ? result['message']
+                : 'Login failed. Please try again.';
             _isLoading = false;
           });
         }
@@ -47,7 +46,7 @@ class _LoginPageState extends State<LoginPage> {
     } catch (e) {
       if (mounted) {
         setState(() {
-          _errorMessage = 'Connection error. Please try again.';
+          _errorMessage = 'Server connection failed. Please try again later.';
           _isLoading = false;
         });
       }
@@ -61,9 +60,9 @@ class _LoginPageState extends State<LoginPage> {
     super.dispose();
   }
 
-  void _togglePasswordView() {
+  void _togglePasswordVisibility() {
     setState(() {
-      _isHidden = !_isHidden;
+      _isPasswordHidden = !_isPasswordHidden;
     });
   }
 
@@ -77,10 +76,10 @@ class _LoginPageState extends State<LoginPage> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
-              _header(context),
-              _inputField(context),
-              _forgotPassword(context),
-              _signup(context),
+              _buildHeader(),
+              _buildInputFields(),
+              _buildForgotPassword(),
+              _buildSignupPrompt(),
             ],
           ),
         ),
@@ -88,7 +87,7 @@ class _LoginPageState extends State<LoginPage> {
     );
   }
 
-  Widget _header(context) {
+  Widget _buildHeader() {
     return const Column(
       children: [
         Text(
@@ -100,7 +99,7 @@ class _LoginPageState extends State<LoginPage> {
     );
   }
 
-  Widget _inputField(context) {
+  Widget _buildInputFields() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -148,13 +147,13 @@ class _LoginPageState extends State<LoginPage> {
             filled: true,
             prefixIcon: const Icon(Icons.password),
             suffixIcon: GestureDetector(
-              onTap: _togglePasswordView,
+              onTap: _togglePasswordVisibility,
               child: Icon(
-                _isHidden ? Icons.visibility : Icons.visibility_off,
+                _isPasswordHidden ? Icons.visibility : Icons.visibility_off,
               ),
             ),
           ),
-          obscureText: _isHidden,
+          obscureText: _isPasswordHidden,
           validator: (value) {
             if (value == null || value.isEmpty) {
               return 'Please enter your password';
@@ -173,7 +172,7 @@ class _LoginPageState extends State<LoginPage> {
           child: _isLoading
               ? const CircularProgressIndicator(color: Colors.white)
               : const Text(
-            "Sign In",
+            "Login",
             style: TextStyle(fontSize: 20, color: Colors.white),
           ),
         )
@@ -181,7 +180,7 @@ class _LoginPageState extends State<LoginPage> {
     );
   }
 
-  Widget _forgotPassword(context) {
+  Widget _buildForgotPassword() {
     return TextButton(
       onPressed: () {
         // TODO: Implement forgot password functionality
@@ -193,7 +192,7 @@ class _LoginPageState extends State<LoginPage> {
     );
   }
 
-  Widget _signup(context) {
+  Widget _buildSignupPrompt() {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
