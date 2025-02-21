@@ -9,15 +9,15 @@ class AuthService {
   // Dynamic base URL based on platform
   static String get baseUrl {
     if (kIsWeb) {
-      return 'http://localhost:8081/auth';  // For web
+      return 'http://localhost:8081/auth';
     } else {
-      return 'http://10.0.2.2:8081/auth';   // For Android emulator
+      return 'http://10.0.2.2:8081/auth';
     }
   }
 
   final storage = const FlutterSecureStorage();
 
-  // Headers for all requests
+
   Map<String, String> get _headers => {
     'Content-Type': 'application/json',
     'Accept': '*/*',
@@ -64,6 +64,7 @@ class AuthService {
   }
 
   Future<Map<String, dynamic>> register(String email, String password, String username) async {
+
     try {
       print('Attempting registration to: ${Uri.parse('$baseUrl/signup')}');
 
@@ -83,11 +84,29 @@ class AuthService {
       if (response.statusCode == 200) {
         return {'success': true, 'data': json.decode(response.body)};
       } else {
-        final error = json.decode(response.body);
-        return {
-          'success': false,
-          'message': error['message'] ?? 'Registration failed'
-        };
+        // Try to parse the error response
+        try {
+          final error = json.decode(response.body);
+          return {
+            'success': false,
+            'message': error['message'] ??
+                error['error'] ??
+                error['exception'] ??
+                'Registration failed'
+          };
+        } catch (parseError) {
+
+          if (response.body.contains('already registered')) {
+            return {
+              'success': false,
+              'message': 'Email is already registered'
+            };
+          }
+          return {
+            'success': false,
+            'message': 'Registration failed: ${response.body}'
+          };
+        }
       }
     } catch (e) {
       print('Registration error: $e');

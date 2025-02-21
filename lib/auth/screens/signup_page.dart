@@ -54,7 +54,11 @@ class _SignupPageState extends State<SignupPage> {
     } catch (e) {
       if (mounted) {
         setState(() {
-          _errorMessage = 'Connection error. Please try again.';
+          if (e.toString().contains('User is already registered')) {
+            _errorMessage = 'User is already registered';
+          } else {
+            _errorMessage = 'Connection error. Please try again.';
+          }
           _isLoading = false;
         });
       }

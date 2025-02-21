@@ -34,6 +34,8 @@ class _VerificationPageState extends State<VerificationPage> {
         }),
       );
 
+      // print('Response: ${response.body}');
+
       if (response.statusCode == 200) {
         if (mounted) {
           Navigator.pushReplacementNamed(context, '/login');
@@ -45,6 +47,7 @@ class _VerificationPageState extends State<VerificationPage> {
         });
       }
     } catch (e) {
+      // print('Exception caught: $e');
       setState(() {
         _errorMessage = 'Connection error. Please try again.';
       });
@@ -155,7 +158,7 @@ class _VerificationPageState extends State<VerificationPage> {
               ),
               const SizedBox(height: 20),
               ElevatedButton(
-                onPressed: _isLoading ? null : _verifyCode,  // Changed this line
+                onPressed: _isLoading ? null : _verifyCode,
                 style: ElevatedButton.styleFrom(
                   shape: const StadiumBorder(),
                   padding: const EdgeInsets.symmetric(vertical: 16),
