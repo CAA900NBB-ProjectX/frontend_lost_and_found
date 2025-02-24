@@ -33,7 +33,8 @@ class _LoginPageState extends State<LoginPage> {
 
       if (mounted) {
         if (result.containsKey('success') && result['success']) {
-          Navigator.pushReplacementNamed(context, '/home');
+          // Navigator.pushReplacementNamed(context, '/home');
+          Navigator.pushReplacementNamed(context, '/test');
         } else {
           setState(() {
             _errorMessage = result.containsKey('message')

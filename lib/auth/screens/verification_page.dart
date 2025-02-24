@@ -26,7 +26,7 @@ class _VerificationPageState extends State<VerificationPage> {
 
     try {
       final response = await http.post(
-        Uri.parse('http://localhost:8081/auth/verify'),
+        Uri.parse('http://172.208.64.141:8082/auth/verify'),
         headers: {'Content-Type': 'application/json'},
         body: json.encode({
           'email': widget.email,
@@ -68,7 +68,7 @@ class _VerificationPageState extends State<VerificationPage> {
 
     try {
       final response = await http.post(
-        Uri.parse('http://localhost:8081/auth/resend'),
+        Uri.parse('http://172.208.64.141:8082/auth/resend'),
         headers: {'Content-Type': 'application/json'},
         body: widget.email,
       );

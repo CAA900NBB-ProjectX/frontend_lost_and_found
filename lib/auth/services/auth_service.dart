@@ -9,9 +9,9 @@ class AuthService {
   // Dynamic base URL based on platform
   static String get baseUrl {
     if (kIsWeb) {
-      return 'http://localhost:8081/auth';
+      return 'http://172.208.64.141:8082/auth';
     } else {
-      return 'http://10.0.2.2:8081/auth';
+      return 'http://172.208.64.141:8082/auth';
     }
   }
 
