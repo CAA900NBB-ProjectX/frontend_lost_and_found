@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import '../models/item.dart';
 import '../services/item_service.dart';
-import '../services/auth_service.dart';
+import '../auth/services/auth_service.dart';
 import 'dart:convert';
+import 'dart:typed_data';
 import 'package:intl/intl.dart';
 
 class HomeScreen extends StatefulWidget {
