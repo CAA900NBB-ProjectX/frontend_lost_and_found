@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
-import 'dart:typed_data';
-import 'package:intl/intl.dart';
 import '../models/item.dart';
 import '../services/item_service.dart';
 import '../services/auth_service.dart';
-import '../widgets/app_scaffold.dart';
+import 'dart:convert';
+import 'package:intl/intl.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({Key? key}) : super(key: key);
@@ -57,6 +56,13 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     }
   }
 
+  Future<void> _logout() async {
+    await _authService.logout();
+    if (mounted) {
+      Navigator.pushReplacementNamed(context, '/login');
+    }
+  }
+
   @override
   void dispose() {
     _tabController.dispose();
@@ -65,21 +71,32 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
 
   @override
   Widget build(BuildContext context) {
-    return AppScaffold(
-      title: 'Found It!',
-      currentRoute: '/home',
-      actions: [
-        IconButton(
-          icon: const Icon(Icons.refresh),
-          onPressed: _loadItems,
-        ),
-      ],
-      bottom: TabBar(
-        controller: _tabController,
-        tabs: const [
-          Tab(text: 'Found Items'),
-          Tab(text: 'Lost Items'),
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Found It!'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: _loadItems,
+          ),
+          IconButton(
+            icon: const Icon(Icons.person),
+            onPressed: () {
+              Navigator.pushNamed(context, '/profile');
+            },
+          ),
+          IconButton(
+            icon: const Icon(Icons.logout),
+            onPressed: _logout,
+          ),
         ],
+        bottom: TabBar(
+          controller: _tabController,
+          tabs: const [
+            Tab(text: 'Found Items'),
+            Tab(text: 'Lost Items'),
+          ],
+        ),
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
