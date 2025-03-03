@@ -1,13 +1,12 @@
 name: found_it_frontend
-description: "A new Flutter project."
+description: "A lost and found application to help people recover their belongings."
 
 publish_to: 'none'
-
 
 version: 1.0.0+1
 
 environment:
-  sdk: '>=3.3.0 <4.0.0'
+  sdk: '>=3.0.0 <4.0.0'
 
 dependencies:
   flutter:
@@ -18,6 +17,8 @@ dependencies:
   intl: ^0.18.1
   path_provider: ^2.0.0
   path_provider_android: ^2.0.0
+  image_picker: ^1.0.4
+  provider: ^6.0.5
 
 dev_dependencies:
   flutter_test:
@@ -26,4 +27,5 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
-
+  assets:
+    - assets/images/
