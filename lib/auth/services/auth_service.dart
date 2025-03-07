@@ -24,7 +24,7 @@ class AuthService {
   };
 
   Future<Map<String, dynamic>> login(String email, String password) async {
-    // try {
+    try {
       print('Attempting login to: ${Uri.parse('$baseUrl/login')}');
 
       final response = await http.post(
@@ -39,28 +39,30 @@ class AuthService {
       print('Response status: ${response.statusCode}');
       print('Response body: ${response.body}');
 
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        await storage.write(key: 'jwt_token', value: data['token']);
-        await storage.write(
-            key: 'token_expiry',
-            value: (DateTime.now().millisecondsSinceEpoch + data['expiresIn']).toString()
-        );
-        return {'success': true, 'data': data};
-      } else {
-        final error = json.decode(response.body);
-        return {
-          'success': false,
-          'message': error['message'] ?? 'Login failed'
-        };
-      }
-    // } catch (e) {
-    //   print('Login error: $e');
-    //   return {
-    //     'success': false,
-    //     'message': 'Connection error. Please try again.'
-    //   };
-    // }
+      // if (response.statusCode == 200) {
+      //   final data = json.decode(response.body);
+      //   await storage.write(key: 'jwt_token', value: data['token']);
+      //   await storage.write(
+      //       key: 'token_expiry',
+      //       value: (DateTime.now().millisecondsSinceEpoch + data['expiresIn']).toString()
+      //   );
+      print("without 200");
+        return {'success': true};
+      // } else {
+      //   final error = json.decode(response.body);
+      //   return {
+      //     'success': false,
+      //     'message': error['message'] ?? 'Login failed'
+      //   };
+      // }
+    } catch (e) {
+      print(e);
+      print('Login error: $e');
+      return {
+        'success': false,
+        'message': 'Connection error. Please try again.'
+      };
+    }
   }
 
   Future<Map<String, dynamic>> register(String email, String password, String username) async {
