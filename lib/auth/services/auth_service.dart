@@ -24,7 +24,7 @@ class AuthService {
   };
 
   Future<Map<String, dynamic>> login(String email, String password) async {
-    try {
+    // try {
       print('Attempting login to: ${Uri.parse('$baseUrl/login')}');
 
       final response = await http.post(
@@ -54,13 +54,13 @@ class AuthService {
           'message': error['message'] ?? 'Login failed'
         };
       }
-    } catch (e) {
-      print('Login error: $e');
-      return {
-        'success': false,
-        'message': 'Connection error. Please try again.'
-      };
-    }
+    // } catch (e) {
+    //   print('Login error: $e');
+    //   return {
+    //     'success': false,
+    //     'message': 'Connection error. Please try again.'
+    //   };
+    // }
   }
 
   Future<Map<String, dynamic>> register(String email, String password, String username) async {
