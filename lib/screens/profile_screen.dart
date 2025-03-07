@@ -41,22 +41,28 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
-  Future<void> _logout() async {
-    await _authService.logout();
-    if (mounted) {
-      Navigator.pushReplacementNamed(context, '/login');
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: const Text('My Profile'),
         actions: [
+          // Only the logout button in the app bar
           IconButton(
             icon: const Icon(Icons.logout),
-            onPressed: _logout,
+            onPressed: () async {
+              try {
+                // Call the backend logout endpoint
+                await _authService.logout();
+                if (mounted) {
+                  Navigator.pushReplacementNamed(context, '/login');
+                }
+              } catch (e) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Logout failed: $e')),
+                );
+              }
+            },
             tooltip: 'Logout',
           ),
         ],
@@ -203,12 +209,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       );
                     },
                   ),
-                  const Divider(),
-                  ListTile(
-                    leading: const Icon(Icons.logout, color: Colors.red),
-                    title: const Text('Logout', style: TextStyle(color: Colors.red)),
-                    onTap: _logout,
-                  ),
+                  //
                 ],
               ),
             ),
