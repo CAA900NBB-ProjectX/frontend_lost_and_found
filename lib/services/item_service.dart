@@ -11,18 +11,18 @@ class ItemService {
   String get baseUrl {
     // For web
     if (kIsWeb) {
-      return 'http://localhost:8085';
+      return 'http://172.172.229.186:8085';
     }
     // For Android emulator
     else if (!kIsWeb && Platform.isAndroid) {
-      return 'http://10.0.2.2:8085';
+      return 'http://172.172.229.186:8085';
     }
     // For iOS simulator
     else if (!kIsWeb && Platform.isIOS) {
-      return 'http://localhost:8085';
+      return 'http://172.172.229.186:8085';
     }
     // Default fallback
-    return 'http://localhost:8085';
+    return 'http://172.172.229.186:8085';
   }
 
   Future<Map<String, String>> _getHeaders() async {
