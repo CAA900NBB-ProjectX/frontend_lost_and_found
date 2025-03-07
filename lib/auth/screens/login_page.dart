@@ -25,7 +25,7 @@ class _LoginPageState extends State<LoginPage> {
       _errorMessage = null;
     });
 
-    try {
+    // try {
       final result = await _authService.login(
         _emailController.text.trim(),
         _passwordController.text,
@@ -44,14 +44,14 @@ class _LoginPageState extends State<LoginPage> {
           });
         }
       }
-    } catch (e) {
-      if (mounted) {
-        setState(() {
-          _errorMessage = 'Server connection failed. Please try again later.';
-          _isLoading = false;
-        });
-      }
-    }
+    // } catch (e) {
+      // if (mounted) {
+      //   setState(() {
+      //     _errorMessage = 'Server connection failed. Please try again later.';
+      //     _isLoading = false;
+      //   });
+      // }
+    // }
   }
 
   @override
