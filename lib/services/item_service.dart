@@ -1,3 +1,5 @@
+// Replace the entire content of lib/services/item_service.dart with this:
+
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/foundation.dart' show kIsWeb;
@@ -9,24 +11,25 @@ class ItemService {
   final storage = const FlutterSecureStorage();
 
   String get baseUrl {
-    // For web
+    // For local development
     if (kIsWeb) {
-      return 'http://172.172.229.186:8085';
+      return 'http://localhost:8082';
     }
     // For Android emulator
     else if (!kIsWeb && Platform.isAndroid) {
-      return 'http://172.172.229.186:8085';
+      return 'http://10.0.2.2:8082';  // Points to localhost on the host machine
     }
     // For iOS simulator
     else if (!kIsWeb && Platform.isIOS) {
-      return 'http://172.172.229.186:8085';
+      return 'http://localhost:8082';
     }
     // Default fallback
-    return 'http://172.172.229.186:8085';
+    return 'http://localhost:8082';
   }
 
   Future<Map<String, String>> _getHeaders() async {
     final token = await storage.read(key: 'jwt_token');
+    print('Token for request: ${token != null ? 'exists' : 'missing'}');
     return {
       'Content-Type': 'application/json',
       'Accept': '*/*',
@@ -38,6 +41,8 @@ class ItemService {
   Future<List<Item>> getAllItems() async {
     try {
       final headers = await _getHeaders();
+      print('Request headers: $headers');
+
       final response = await http.get(
         Uri.parse('$baseUrl/item/getallitems'),
         headers: headers,
@@ -50,7 +55,7 @@ class ItemService {
         final List<dynamic> itemsJson = jsonDecode(response.body);
         return itemsJson.map((json) => Item.fromJson(json)).toList();
       } else {
-        print('Failed to load items: ${response.statusCode}');
+        print('Failed to load items: ${response.statusCode} - ${response.body}');
         return [];
       }
     } catch (e) {
@@ -157,7 +162,10 @@ class ItemService {
       );
 
       // Add authorization header
-      request.headers.addAll(headers);
+      final token = await storage.read(key: 'jwt_token');
+      if (token != null) {
+        request.headers['Authorization'] = 'Bearer $token';
+      }
 
       // Add the image file
       request.files.add(
