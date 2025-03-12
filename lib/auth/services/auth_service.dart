@@ -169,7 +169,7 @@ class AuthService {
       print('Attempting to get current user');
 
       final response = await http.get(
-        Uri.parse('$baseUrl/user/me'),
+        Uri.parse(ApiConfig.userMeUrl),
         headers: {
           ..._headers,
           'Authorization': 'Bearer ${await getToken()}'
