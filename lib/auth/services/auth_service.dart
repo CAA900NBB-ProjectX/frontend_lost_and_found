@@ -15,10 +15,10 @@ class AuthService {
 
   Future<Map<String, dynamic>> login(String email, String password) async {
     try {
-      print('Attempting login to: ${Uri.parse('$baseUrl/login')}');
+      print('Attempting login to: ${Uri.parse(ApiConfig.loginUrl)}');
 
       final response = await http.post(
-        Uri.parse('$baseUrl/login'),
+        Uri.parse(ApiConfig.loginUrl),
         headers: _headers,
         body: json.encode({
           'email': email,
