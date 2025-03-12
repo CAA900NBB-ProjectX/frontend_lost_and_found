@@ -4,24 +4,14 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import '../models/user.dart';
 import '../responses/login_response.dart';
+import '../../config/api_config.dart';
 
 class AuthService {
-  // Dynamic base URL based on platform
-  static String get baseUrl {
-    if (kIsWeb) {
-      return 'http://172.172.229.186:8085/auth';
-    } else {
-      return 'http://172.172.229.186:8085/auth';
-    }
-  }
+
+  Map<String, String> get _headers => ApiConfig.headers;
 
   final storage = const FlutterSecureStorage();
 
-
-  Map<String, String> get _headers => {
-    'Content-Type': 'application/json',
-    'Accept': '*/*',
-  };
 
   Future<Map<String, dynamic>> login(String email, String password) async {
     try {
