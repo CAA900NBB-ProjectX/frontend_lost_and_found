@@ -1,5 +1,6 @@
 import 'package:http/http.dart' as http;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import '../../config/api_config.dart';
 
 class ApiInterceptor {
   static const storage = FlutterSecureStorage();
@@ -7,7 +8,7 @@ class ApiInterceptor {
   static Future<Map<String, String>> getHeaders() async {
     final token = await storage.read(key: 'jwt_token');
     return {
-      'Content-Type': 'application/json',
+      ...ApiConfig.headers,
       if (token != null) 'Authorization': 'Bearer $token',
     };
   }
