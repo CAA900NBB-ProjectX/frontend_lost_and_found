@@ -58,10 +58,10 @@ class AuthService {
   Future<Map<String, dynamic>> register(String email, String password, String username) async {
 
     try {
-      print('Attempting registration to: ${Uri.parse('$baseUrl/signup')}');
+      print('Attempting registration to: ${Uri.parse(ApiConfig.signupUrl)}');
 
       final response = await http.post(
-        Uri.parse('$baseUrl/signup'),
+        Uri.parse(ApiConfig.signupUrl),
         headers: _headers,
         body: json.encode({
           'email': email,
