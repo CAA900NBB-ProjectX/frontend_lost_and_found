@@ -111,10 +111,10 @@ class AuthService {
 
   Future<Map<String, dynamic>> verifyEmail(String email, String code) async {
     try {
-      print('Attempting verification to: ${Uri.parse('$baseUrl/verify')}');
+      print('Attempting verification to: ${Uri.parse(ApiConfig.verifyUrl)}');
 
       final response = await http.post(
-        Uri.parse('$baseUrl/verify'),
+        Uri.parse(ApiConfig.verifyUrl),
         headers: _headers,
         body: json.encode({
           'email': email,
