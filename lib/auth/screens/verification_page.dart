@@ -69,8 +69,8 @@ class _VerificationPageState extends State<VerificationPage> {
 
     try {
       final response = await http.post(
-        Uri.parse('http://172.172.229.186:8085/auth/resend'),
-        headers: {'Content-Type': 'application/json'},
+        Uri.parse(ApiConfig.resendCodeUrl),
+        headers: ApiConfig.headers,
         body: widget.email,
       );
 
