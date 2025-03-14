@@ -26,16 +26,13 @@ class Item {
   });
 
   factory Item.fromJson(Map<String, dynamic> json) {
-    // Helper function to safely parse values
-    T? safeGet<T>(Map<String, dynamic> map, String key) {
-      return map.containsKey(key) ? map[key] as T? : null;
-    }
-
-    // Handle dateTimeFound which can be in various formats
+    // Handle dateTimeFound which can be a List or String
     String parseDateTimeFound(dynamic value) {
       if (value == null) {
         return DateTime.now().toIso8601String();
-      } else if (value is List) {
+      }
+
+      if (value is List) {
         // Convert [2025, 2, 21, 5, 54, 28, 402000000] to a DateTime string
         try {
           final year = value[0];
@@ -58,33 +55,35 @@ class Item {
       }
     }
 
-    // Handle image IDs list which might be in different formats
-    List<int>? parseImageIds(dynamic value) {
-      if (value == null) return null;
-
-      if (value is List) {
-        return value.map((item) => item is int ? item : int.tryParse(item.toString()) ?? 0).toList();
+    // Get item ID safely
+    int? getItemId() {
+      if (json.containsKey('item_id')) {
+        return json['item_id'] as int?;
       }
-
+      if (json.containsKey('itemId')) {
+        return json['itemId'] as int?;
+      }
+      if (json.containsKey('id')) {
+        return json['id'] as int?;
+      }
       return null;
     }
 
-    // Item ID could be item_id, itemId, or id
-    int? itemId = safeGet<int>(json, 'item_id') ??
-        safeGet<int>(json, 'itemId') ??
-        safeGet<int>(json, 'id');
-
     return Item(
-      itemId: itemId,
-      itemName: safeGet<String>(json, 'itemName') ?? '',
-      description: safeGet<String>(json, 'description') ?? '',
-      categoryId: safeGet<int>(json, 'categoryId') ?? 0,
-      locationFound: safeGet<String>(json, 'locationFound') ?? '',
+      itemId: getItemId(),
+      itemName: json['itemName'] ?? '',
+      description: json['description'] ?? '',
+      categoryId: json['categoryId'] ?? 0,
+      locationFound: json['locationFound'] ?? '',
       dateTimeFound: parseDateTimeFound(json['dateTimeFound']),
-      reportedBy: safeGet<String>(json, 'reportedBy') ?? '',
-      contactInfo: safeGet<String>(json, 'contactInfo') ?? '',
-      status: safeGet<String>(json, 'status') ?? "FOUND",
-      imageIdsList: parseImageIds(json['imageIdsList']),
+      reportedBy: json['reportedBy'] ?? '',
+      contactInfo: json['contactInfo'] ?? '',
+      status: json['status'] ?? "FOUND",
+      imageIdsList: json['imageIdsList'] != null
+          ? (json['imageIdsList'] is List
+          ? List<int>.from(json['imageIdsList'])
+          : null)
+          : null,
     );
   }
 
