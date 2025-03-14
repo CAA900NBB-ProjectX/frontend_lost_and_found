@@ -185,38 +185,6 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                     color: Colors.white,
                   ),
                 ),
-                  builder: (context, snapshot) {
-                    if (snapshot.connectionState == ConnectionState.done &&
-                        snapshot.hasData &&
-                        snapshot.data != null) {
-                      return ClipRRect(
-                        borderRadius: const BorderRadius.only(
-                          topLeft: Radius.circular(12),
-                          topRight: Radius.circular(12),
-                        ),
-                        child: Image.memory(
-                          Uint8List.fromList(snapshot.data!),
-                          fit: BoxFit.cover,
-                        ),
-                      );
-                    } else {
-                      return Center(
-                        child: Icon(
-                          _getCategoryIcon(item.categoryId),
-                          size: 40,
-                          color: Colors.white,
-                        ),
-                      );
-                    }
-                  },
-                )
-                    : Center(
-                  child: Icon(
-                    _getCategoryIcon(item.categoryId),
-                    size: 40,
-                    color: Colors.white,
-                  ),
-                ),
               ),
             ),
             // Item details

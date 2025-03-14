@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'package:intl/intl.dart';
 import '../models/item.dart';
 import '../services/item_service.dart';
+import 'dart:convert'; // Add this line to import base64Decode
 
 class ViewItemScreen extends StatefulWidget {
   final int itemId;
