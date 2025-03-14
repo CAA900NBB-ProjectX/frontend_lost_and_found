@@ -28,6 +28,6 @@ class ApiConfig {
 
   static Map<String, String> get headers => {
     'Content-Type': 'application/json',
-    'Accept': '*/*',
+    'Accept': 'application/json', // Changed to explicitly request JSON
   };
 }
