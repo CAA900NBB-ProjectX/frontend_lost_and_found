@@ -11,24 +11,20 @@ class ItemService {
   final storage = const FlutterSecureStorage();
   final AuthService _authService = AuthService();
 
-  // Improved method to get headers with auth token
   Future<Map<String, String>> _getHeaders() async {
     final token = await _authService.getToken();
-    print('Using auth token: ${token != null ? 'Yes' : 'No'}');
-
     return {
       'Content-Type': 'application/json',
       'Accept': 'application/json',
-      if (token != null && token.isNotEmpty) 'Authorization': 'Bearer $token',
+      if (token != null) 'Authorization': 'Bearer $token',
     };
   }
 
-  // Get all items with better error handling
+  // Get all items
   Future<List<Item>> getAllItems() async {
     try {
       final headers = await _getHeaders();
-      print('Fetching all items with headers: $headers');
-      print('URL: ${ApiConfig.getAllItemsUrl}');
+      print('Fetching all items with URL: ${ApiConfig.getAllItemsUrl}');
 
       final response = await http.get(
         Uri.parse(ApiConfig.getAllItemsUrl),
@@ -37,19 +33,12 @@ class ItemService {
 
       print('Get All Items Response status: ${response.statusCode}');
 
-      // Log first 100 chars to avoid huge logs
-      final responsePreview = response.body.length > 100
-          ? response.body.substring(0, 100) + '...'
-          : response.body;
-      print('Get All Items Response preview: $responsePreview');
-
-      if (response.statusCode >= 200 && response.statusCode < 300) {
+      if (response.statusCode == 200) {
         try {
           final List<dynamic> itemsJson = jsonDecode(response.body);
           return itemsJson.map((json) => Item.fromJson(json)).toList();
         } catch (e) {
-          print('JSON parsing error: $e');
-          print('Raw response: ${response.body}');
+          print('Error parsing JSON: $e');
           return [];
         }
       } else {
@@ -63,15 +52,12 @@ class ItemService {
     }
   }
 
-  // Create a new item with improved error handling
+  // Create a new item
   Future<Item?> createItem(Item item) async {
     try {
       final headers = await _getHeaders();
       final jsonData = item.toJson();
       final jsonBody = jsonEncode(jsonData);
-
-      print("Creating item with URL: ${ApiConfig.insertItemUrl}");
-      print("Headers: $headers");
       print("Sending JSON: $jsonBody");
 
       final response = await http.post(
@@ -83,47 +69,12 @@ class ItemService {
       print('Create Item Response status: ${response.statusCode}');
       print('Create Item Response body: ${response.body}');
 
-      if (response.statusCode >= 200 && response.statusCode < 300) {
+      if (response.statusCode == 200) {
         try {
           final responseJson = jsonDecode(response.body);
           return Item.fromJson(responseJson);
         } catch (e) {
-          print('Error parsing create response: $e');
-
-          // Try to extract just the ID if the response format is different
-          try {
-            final responseJson = jsonDecode(response.body);
-            if (responseJson['item_id'] != null) {
-              return Item(
-                itemId: responseJson['item_id'],
-                itemName: item.itemName,
-                description: item.description,
-                categoryId: item.categoryId,
-                locationFound: item.locationFound,
-                dateTimeFound: item.dateTimeFound,
-                reportedBy: item.reportedBy,
-                contactInfo: item.contactInfo,
-                status: item.status,
-              );
-            }
-          } catch (_) {
-            // Ignore this error if it fails
-          }
-
-          // If we at least know it was successful, return the original item
-          if (response.statusCode < 300) {
-            return Item(
-              itemName: item.itemName,
-              description: item.description,
-              categoryId: item.categoryId,
-              locationFound: item.locationFound,
-              dateTimeFound: item.dateTimeFound,
-              reportedBy: item.reportedBy,
-              contactInfo: item.contactInfo,
-              status: item.status,
-            );
-          }
-
+          print('Error parsing response: $e');
           return null;
         }
       } else {
@@ -143,17 +94,14 @@ class ItemService {
       final headers = await _getHeaders();
       final url = '${ApiConfig.getItemByIdUrl}/$itemId';
 
-      print('Getting item with URL: $url');
-
       final response = await http.get(
         Uri.parse(url),
         headers: headers,
       );
 
       print('Get Item by ID Response status: ${response.statusCode}');
-      print('Get Item by ID Response preview: ${response.body.substring(0, min(100, response.body.length))}...');
 
-      if (response.statusCode >= 200 && response.statusCode < 300) {
+      if (response.statusCode == 200) {
         try {
           final responseJson = jsonDecode(response.body);
           return Item.fromJson(responseJson);
@@ -171,13 +119,11 @@ class ItemService {
     }
   }
 
-  // Upload image for an item with improved error handling
+  // Upload image for an item
   Future<bool> uploadItemImage(int itemId, List<int> imageBytes, String imageName) async {
     try {
-      final headers = await _getHeaders();
+      final token = await _authService.getToken();
       final url = '${ApiConfig.uploadImageUrl}/$itemId';
-
-      print('Uploading image to URL: $url');
 
       // Create multipart request
       final request = http.MultipartRequest(
@@ -186,12 +132,9 @@ class ItemService {
       );
 
       // Add auth header
-      if (headers.containsKey('Authorization')) {
-        request.headers['Authorization'] = headers['Authorization']!;
+      if (token != null) {
+        request.headers['Authorization'] = 'Bearer $token';
       }
-
-      // Add content type for the request parts
-      request.headers['Accept'] = 'application/json';
 
       // Add the image file
       request.files.add(
@@ -202,14 +145,13 @@ class ItemService {
         ),
       );
 
-      print('Sending upload request...');
       final streamedResponse = await request.send();
       final response = await http.Response.fromStream(streamedResponse);
 
       print('Upload Image Response status: ${response.statusCode}');
       print('Upload Image Response body: ${response.body}');
 
-      return response.statusCode >= 200 && response.statusCode < 300;
+      return response.statusCode == 200;
     } catch (e) {
       print('Error uploading image: $e');
       return false;
@@ -222,14 +164,12 @@ class ItemService {
       final headers = await _getHeaders();
       final url = '${ApiConfig.getImageUrl}/$imageId';
 
-      print('Getting image from URL: $url');
-
       final response = await http.get(
         Uri.parse(url),
         headers: headers,
       );
 
-      if (response.statusCode >= 200 && response.statusCode < 300) {
+      if (response.statusCode == 200) {
         return response.bodyBytes;
       } else {
         print('Failed to get image: ${response.statusCode}');
@@ -239,10 +179,5 @@ class ItemService {
       print('Error getting image: $e');
       return null;
     }
-  }
-
-  // Helper method for string length safety
-  int min(int a, int b) {
-    return a < b ? a : b;
   }
 }
