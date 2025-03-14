@@ -25,9 +25,8 @@ class ApiConfig {
   static String get getItemsByUserUrl => '$itemBaseUrl/getitemsbyuser'; // Will append /{userId}
   static String get searchItemsUrl => '$itemBaseUrl/search'; // Will use query parameters
 
-
   static Map<String, String> get headers => {
     'Content-Type': 'application/json',
-    'Accept': 'application/json', // Changed to explicitly request JSON
+    'Accept': 'application/json',  // Changed to explicitly request JSON
   };
 }
