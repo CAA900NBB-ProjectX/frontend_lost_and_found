@@ -2,8 +2,14 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 
 class ApiConfig {
   static String get baseUrl {
-    return 'https://fb49-74-12-27-5.ngrok-free.app';
+    return 'http://foundit.eastus.cloudapp.azure.com:8085';
   }
+
+  // Helper to check if we're in development
+  static bool get isDevelopment {
+    return baseUrl.contains('localhost') || baseUrl.contains('ngrok');
+  }
+
   static String get authBaseUrl => '$baseUrl/auth';
   static String get loginUrl => '$authBaseUrl/login';
   static String get signupUrl => '$authBaseUrl/signup';
@@ -13,7 +19,7 @@ class ApiConfig {
   static String get userBaseUrl => '$baseUrl/user';
   static String get userMeUrl => '$userBaseUrl/me';
 
-  // Add Item API endpoints
+  // Item API endpoints
   static String get itemBaseUrl => '$baseUrl/item';
   static String get getAllItemsUrl => '$itemBaseUrl/getallitems';
   static String get insertItemUrl => '$itemBaseUrl/insertitems';
@@ -27,6 +33,6 @@ class ApiConfig {
 
   static Map<String, String> get headers => {
     'Content-Type': 'application/json',
-    'Accept': 'application/json',  // Changed to explicitly request JSON
+    'Accept': '*/*',  // Request JSON responses
   };
 }
