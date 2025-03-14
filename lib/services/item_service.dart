@@ -3,40 +3,55 @@ import 'dart:io';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:http/http.dart' as http;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'dart:html' as html;
 import '../models/item.dart';
 import '../config/api_config.dart';
 import '../auth/services/auth_service.dart';
-import 'package:universal_platform/universal_platform.dart';
 
 class ItemService {
   final storage = const FlutterSecureStorage();
   final AuthService _authService = AuthService();
 
+  // Improved method to get headers with auth token
   Future<Map<String, String>> _getHeaders() async {
     final token = await _authService.getToken();
+    print('Using auth token: ${token != null ? 'Yes' : 'No'}');
+
     return {
       'Content-Type': 'application/json',
-      'Accept': '*/*',
-      if (token != null) 'Authorization': 'Bearer $token',
+      'Accept': 'application/json',
+      if (token != null && token.isNotEmpty) 'Authorization': 'Bearer $token',
     };
   }
 
-  // Get all items
+  // Get all items with better error handling
   Future<List<Item>> getAllItems() async {
     try {
       final headers = await _getHeaders();
+      print('Fetching all items with headers: $headers');
+      print('URL: ${ApiConfig.getAllItemsUrl}');
+
       final response = await http.get(
         Uri.parse(ApiConfig.getAllItemsUrl),
         headers: headers,
       );
 
       print('Get All Items Response status: ${response.statusCode}');
-      print('Get All Items Response body: ${response.body}');
 
-      if (response.statusCode == 200) {
-        final List<dynamic> itemsJson = jsonDecode(response.body);
-        return itemsJson.map((json) => Item.fromJson(json)).toList();
+      // Log first 100 chars to avoid huge logs
+      final responsePreview = response.body.length > 100
+          ? response.body.substring(0, 100) + '...'
+          : response.body;
+      print('Get All Items Response preview: $responsePreview');
+
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        try {
+          final List<dynamic> itemsJson = jsonDecode(response.body);
+          return itemsJson.map((json) => Item.fromJson(json)).toList();
+        } catch (e) {
+          print('JSON parsing error: $e');
+          print('Raw response: ${response.body}');
+          return [];
+        }
       } else {
         print('Failed to load items: ${response.statusCode}');
         print('Response body: ${response.body}');
@@ -48,12 +63,15 @@ class ItemService {
     }
   }
 
-  // Create a new item
+  // Create a new item with improved error handling
   Future<Item?> createItem(Item item) async {
     try {
       final headers = await _getHeaders();
       final jsonData = item.toJson();
       final jsonBody = jsonEncode(jsonData);
+
+      print("Creating item with URL: ${ApiConfig.insertItemUrl}");
+      print("Headers: $headers");
       print("Sending JSON: $jsonBody");
 
       final response = await http.post(
@@ -65,12 +83,13 @@ class ItemService {
       print('Create Item Response status: ${response.statusCode}');
       print('Create Item Response body: ${response.body}');
 
-      if (response.statusCode == 200) {
+      if (response.statusCode >= 200 && response.statusCode < 300) {
         try {
           final responseJson = jsonDecode(response.body);
           return Item.fromJson(responseJson);
         } catch (e) {
-          print('Error parsing response: $e');
+          print('Error parsing create response: $e');
+
           // Try to extract just the ID if the response format is different
           try {
             final responseJson = jsonDecode(response.body);
@@ -87,7 +106,24 @@ class ItemService {
                 status: item.status,
               );
             }
-          } catch (_) {}
+          } catch (_) {
+            // Ignore this error if it fails
+          }
+
+          // If we at least know it was successful, return the original item
+          if (response.statusCode < 300) {
+            return Item(
+              itemName: item.itemName,
+              description: item.description,
+              categoryId: item.categoryId,
+              locationFound: item.locationFound,
+              dateTimeFound: item.dateTimeFound,
+              reportedBy: item.reportedBy,
+              contactInfo: item.contactInfo,
+              status: item.status,
+            );
+          }
+
           return null;
         }
       } else {
@@ -105,17 +141,26 @@ class ItemService {
   Future<Item?> getItemById(int itemId) async {
     try {
       final headers = await _getHeaders();
+      final url = '${ApiConfig.getItemByIdUrl}/$itemId';
+
+      print('Getting item with URL: $url');
+
       final response = await http.get(
-        Uri.parse('${ApiConfig.getItemByIdUrl}/$itemId'),
+        Uri.parse(url),
         headers: headers,
       );
 
       print('Get Item by ID Response status: ${response.statusCode}');
-      print('Get Item by ID Response body: ${response.body}');
+      print('Get Item by ID Response preview: ${response.body.substring(0, min(100, response.body.length))}...');
 
-      if (response.statusCode == 200) {
-        final responseJson = jsonDecode(response.body);
-        return Item.fromJson(responseJson);
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        try {
+          final responseJson = jsonDecode(response.body);
+          return Item.fromJson(responseJson);
+        } catch (e) {
+          print('Error parsing item response: $e');
+          return null;
+        }
       } else {
         print('Failed to get item: ${response.statusCode}');
         return null;
@@ -126,22 +171,27 @@ class ItemService {
     }
   }
 
-  // Upload image for an item
+  // Upload image for an item with improved error handling
   Future<bool> uploadItemImage(int itemId, List<int> imageBytes, String imageName) async {
     try {
       final headers = await _getHeaders();
+      final url = '${ApiConfig.uploadImageUrl}/$itemId';
+
+      print('Uploading image to URL: $url');
 
       // Create multipart request
       final request = http.MultipartRequest(
         'POST',
-        Uri.parse('${ApiConfig.uploadImageUrl}/$itemId'),
+        Uri.parse(url),
       );
 
       // Add auth header
-      request.headers.addAll({
-        if (headers.containsKey('Authorization'))
-          'Authorization': headers['Authorization']!
-      });
+      if (headers.containsKey('Authorization')) {
+        request.headers['Authorization'] = headers['Authorization']!;
+      }
+
+      // Add content type for the request parts
+      request.headers['Accept'] = 'application/json';
 
       // Add the image file
       request.files.add(
@@ -152,13 +202,14 @@ class ItemService {
         ),
       );
 
+      print('Sending upload request...');
       final streamedResponse = await request.send();
       final response = await http.Response.fromStream(streamedResponse);
 
       print('Upload Image Response status: ${response.statusCode}');
       print('Upload Image Response body: ${response.body}');
 
-      return response.statusCode == 200;
+      return response.statusCode >= 200 && response.statusCode < 300;
     } catch (e) {
       print('Error uploading image: $e');
       return false;
@@ -169,12 +220,16 @@ class ItemService {
   Future<List<int>?> getItemImage(int imageId) async {
     try {
       final headers = await _getHeaders();
+      final url = '${ApiConfig.getImageUrl}/$imageId';
+
+      print('Getting image from URL: $url');
+
       final response = await http.get(
-        Uri.parse('${ApiConfig.getImageUrl}/$imageId'),
+        Uri.parse(url),
         headers: headers,
       );
 
-      if (response.statusCode == 200) {
+      if (response.statusCode >= 200 && response.statusCode < 300) {
         return response.bodyBytes;
       } else {
         print('Failed to get image: ${response.statusCode}');
@@ -186,110 +241,8 @@ class ItemService {
     }
   }
 
-  // Search items
-  Future<List<Item>> searchItems({String? itemName, String? locationFound, String? description}) async {
-    try {
-      final headers = await _getHeaders();
-
-      // Build query parameters
-      final queryParams = <String, String>{};
-      if (itemName != null && itemName.isNotEmpty) queryParams['itemName'] = itemName;
-      if (locationFound != null && locationFound.isNotEmpty) queryParams['locationFound'] = locationFound;
-      if (description != null && description.isNotEmpty) queryParams['description'] = description;
-
-      final uri = Uri.parse(ApiConfig.searchItemsUrl).replace(queryParameters: queryParams);
-
-      final response = await http.get(
-        uri,
-        headers: headers,
-      );
-
-      print('Search Items Response status: ${response.statusCode}');
-      print('Search Items Response body: ${response.body}');
-
-      if (response.statusCode == 200) {
-        final List<dynamic> itemsJson = jsonDecode(response.body);
-        return itemsJson.map((json) => Item.fromJson(json)).toList();
-      } else {
-        print('Failed to search items: ${response.statusCode}');
-        return [];
-      }
-    } catch (e) {
-      print('Error searching items: $e');
-      return [];
-    }
-  }
-
-  // Update an item
-  Future<Item?> updateItem(int itemId, Item item) async {
-    try {
-      final headers = await _getHeaders();
-      final jsonData = item.toJson();
-      final jsonBody = jsonEncode(jsonData);
-
-      final response = await http.put(
-        Uri.parse('${ApiConfig.updateItemUrl}/$itemId'),
-        headers: headers,
-        body: jsonBody,
-      );
-
-      print('Update Item Response status: ${response.statusCode}');
-      print('Update Item Response body: ${response.body}');
-
-      if (response.statusCode == 200) {
-        final responseJson = jsonDecode(response.body);
-        return Item.fromJson(responseJson);
-      } else {
-        print('Failed to update item: ${response.statusCode}');
-        return null;
-      }
-    } catch (e) {
-      print('Error updating item: $e');
-      return null;
-    }
-  }
-
-  // Delete an item
-  Future<bool> deleteItem(int itemId) async {
-    try {
-      final headers = await _getHeaders();
-      final response = await http.delete(
-        Uri.parse('${ApiConfig.deleteItemUrl}/$itemId'),
-        headers: headers,
-      );
-
-      print('Delete Item Response status: ${response.statusCode}');
-      print('Delete Item Response body: ${response.body}');
-
-      return response.statusCode == 200;
-    } catch (e) {
-      print('Error deleting item: $e');
-      return false;
-    }
-  }
-
-  // Get items by user
-  Future<List<Item>> getItemsByUser(int userId) async {
-    try {
-      final headers = await _getHeaders();
-      final response = await http.get(
-        Uri.parse('${ApiConfig.getItemsByUserUrl}/$userId'),
-        headers: headers,
-      );
-
-      print('Get Items by User Response status: ${response.statusCode}');
-      print('Get Items by User Response body: ${response.body}');
-
-      if (response.statusCode == 200) {
-        final List<dynamic> itemsJson = jsonDecode(response.body);
-        return itemsJson.map((json) => Item.fromJson(json)).toList();
-      } else {
-        print('Failed to get items by user: ${response.statusCode}');
-        return [];
-      }
-    } catch (e) {
-      print('Error getting items by user: $e');
-      return [];
-    }
+  // Helper method for string length safety
+  int min(int a, int b) {
+    return a < b ? a : b;
   }
 }
