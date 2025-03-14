@@ -1,34 +1,60 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:universal_platform/universal_platform.dart';
 import '../models/user.dart';
 import '../responses/login_response.dart';
+import '../../config/api_config.dart';
+import 'dart:html' as html;
 
 class AuthService {
-  // Dynamic base URL based on platform
-  static String get baseUrl {
-    if (kIsWeb) {
-      return 'http://172.172.229.186:8085/auth';
+  Map<String, String> get _headers => ApiConfig.headers;
+  final storage = const FlutterSecureStorage();
+
+  Future<void> storeToken(String token, int expiryTime) async {
+    if (UniversalPlatform.isWeb) {
+      html.window.localStorage['jwt_token'] = token;
+      html.window.localStorage['token_expiry'] = expiryTime.toString();
     } else {
-      return 'http://172.172.229.186:8085/auth';
+      await storage.write(key: 'jwt_token', value: token);
+      await storage.write(key: 'token_expiry', value: expiryTime.toString());
     }
   }
 
-  final storage = const FlutterSecureStorage();
+  Future<String?> getToken() async {
+    if (UniversalPlatform.isWeb) {
+      return html.window.localStorage['jwt_token'];
+    } else {
+      return await storage.read(key: 'jwt_token');
+    }
+  }
 
+  Future<bool> isLoggedIn() async {
+    if (UniversalPlatform.isWeb) {
+      final token = html.window.localStorage['jwt_token'];
+      return token != null && token.isNotEmpty;
+    } else {
+      final token = await storage.read(key: 'jwt_token');
+      return token != null;
+    }
+  }
 
-  Map<String, String> get _headers => {
-    'Content-Type': 'application/json',
-    'Accept': '*/*',
-  };
+  Future<void> logout() async {
+    if (UniversalPlatform.isWeb) {
+      html.window.localStorage.remove('jwt_token');
+      html.window.localStorage.remove('token_expiry');
+    } else {
+      await storage.delete(key: 'jwt_token');
+      await storage.delete(key: 'token_expiry');
+    }
+  }
 
   Future<Map<String, dynamic>> login(String email, String password) async {
     try {
-      print('Attempting login to: ${Uri.parse('$baseUrl/login')}');
-
       final response = await http.post(
-        Uri.parse('$baseUrl/login'),
+        Uri.parse(ApiConfig.loginUrl),
         headers: _headers,
         body: json.encode({
           'email': email,
@@ -36,42 +62,30 @@ class AuthService {
         }),
       );
 
-      print('Response status: ${response.statusCode}');
-      print('Response body: ${response.body}');
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        final data = json.decode(response.body);
 
-      // if (response.statusCode == 200) {
-      //   final data = json.decode(response.body);
-      //   await storage.write(key: 'jwt_token', value: data['token']);
-      //   await storage.write(
-      //       key: 'token_expiry',
-      //       value: (DateTime.now().millisecondsSinceEpoch + data['expiresIn']).toString()
-      //   );
-      print("without 200");
-        return {'success': true};
-      // } else {
-      //   final error = json.decode(response.body);
-      //   return {
-      //     'success': false,
-      //     'message': error['message'] ?? 'Login failed'
-      //   };
-      // }
+        if (data['token'] != null && data['expiresIn'] != null) {
+          await storeToken(
+              data['token'],
+              DateTime.now().millisecondsSinceEpoch + (data['expiresIn'] as num).toInt()
+          );
+        }
+
+        return {'success': true, 'data': data};
+      } else {
+
+        return {'success': false, 'message': 'Server error'};
+      }
     } catch (e) {
-      print(e);
-      print('Login error: $e');
-      return {
-        'success': false,
-        'message': 'Connection error. Please try again.'
-      };
+      return {'success': false, 'message': 'Connection error'};
     }
   }
 
   Future<Map<String, dynamic>> register(String email, String password, String username) async {
-
     try {
-      print('Attempting registration to: ${Uri.parse('$baseUrl/signup')}');
-
       final response = await http.post(
-        Uri.parse('$baseUrl/signup'),
+        Uri.parse(ApiConfig.signupUrl),
         headers: _headers,
         body: json.encode({
           'email': email,
@@ -80,51 +94,21 @@ class AuthService {
         }),
       );
 
-      print('Response status: ${response.statusCode}');
-      print('Response body: ${response.body}');
-
-      if (response.statusCode == 200) {
-        return {'success': true, 'data': json.decode(response.body)};
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        final data = json.decode(response.body);
+        return {'success': true, 'data': data};
       } else {
-        // Try to parse the error response
-        try {
-          final error = json.decode(response.body);
-          return {
-            'success': false,
-            'message': error['message'] ??
-                error['error'] ??
-                error['exception'] ??
-                'Registration failed'
-          };
-        } catch (parseError) {
-
-          if (response.body.contains('already registered')) {
-            return {
-              'success': false,
-              'message': 'Email is already registered'
-            };
-          }
-          return {
-            'success': false,
-            'message': 'Registration failed: ${response.body}'
-          };
-        }
+        return {'success': false, 'message': 'Registration failed'};
       }
     } catch (e) {
-      print('Registration error: $e');
-      return {
-        'success': false,
-        'message': 'Connection error. Please try again.'
-      };
+      return {'success': false, 'message': 'Connection error'};
     }
   }
 
   Future<Map<String, dynamic>> verifyEmail(String email, String code) async {
     try {
-      print('Attempting verification to: ${Uri.parse('$baseUrl/verify')}');
-
       final response = await http.post(
-        Uri.parse('$baseUrl/verify'),
+        Uri.parse(ApiConfig.verifyUrl),
         headers: _headers,
         body: json.encode({
           'email': email,
@@ -132,69 +116,34 @@ class AuthService {
         }),
       );
 
-      print('Response status: ${response.statusCode}');
-      print('Response body: ${response.body}');
-
-      if (response.statusCode == 200) {
+      if (response.statusCode >= 200 && response.statusCode < 300) {
         return {'success': true};
       } else {
-        final error = json.decode(response.body);
-        return {
-          'success': false,
-          'message': error['message'] ?? 'Verification failed'
-        };
+        return {'success': false, 'message': 'Verification failed'};
       }
     } catch (e) {
-      print('Verification error: $e');
-      return {
-        'success': false,
-        'message': 'Connection error. Please try again.'
-      };
+      return {'success': false, 'message': 'Connection error'};
     }
   }
 
-  Future<String?> getToken() async {
-    return await storage.read(key: 'jwt_token');
-  }
-
-  Future<bool> isLoggedIn() async {
-    final token = await getToken();
-    if (token == null) return false;
-
-    // Check token expiration
-    final expiryString = await storage.read(key: 'token_expiry');
-    if (expiryString == null) return false;
-
-    final expiry = int.parse(expiryString);
-    return DateTime.now().millisecondsSinceEpoch < expiry;
-  }
-
-  Future<void> logout() async {
-    await storage.delete(key: 'jwt_token');
-    await storage.delete(key: 'token_expiry');
-  }
-
   Future<User?> getCurrentUser() async {
-    try {
-      print('Attempting to get current user');
+    final token = await getToken();
+    if (token == null) return null;
 
+    try {
       final response = await http.get(
-        Uri.parse('$baseUrl/user/me'),
+        Uri.parse(ApiConfig.userMeUrl),
         headers: {
           ..._headers,
-          'Authorization': 'Bearer ${await getToken()}'
+          'Authorization': 'Bearer $token'
         },
       );
 
-      print('Response status: ${response.statusCode}');
-      print('Response body: ${response.body}');
-
-      if (response.statusCode == 200) {
+      if (response.statusCode >= 200 && response.statusCode < 300) {
         return User.fromJson(json.decode(response.body));
       }
       return null;
     } catch (e) {
-      print('Get current user error: $e');
       return null;
     }
   }

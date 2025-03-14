@@ -34,7 +34,6 @@ class _LoginPageState extends State<LoginPage> {
     print(mounted);
       if (mounted) {
         if (result.containsKey('success') && result['success']) {
-          // Navigator.pushReplacementNamed(context, '/home');
           Navigator.pushReplacementNamed(context, '/home');
         } else {
           setState(() {

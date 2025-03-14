@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import '../../config/api_config.dart';
 
 class VerificationPage extends StatefulWidget {
   final String email;
@@ -26,8 +27,8 @@ class _VerificationPageState extends State<VerificationPage> {
 
     try {
       final response = await http.post(
-        Uri.parse('http://172.172.229.186:8085/auth/verify'),
-        headers: {'Content-Type': 'application/json'},
+        Uri.parse(ApiConfig.verifyUrl),
+        headers: ApiConfig.headers,
         body: json.encode({
           'email': widget.email,
           'verificationCode': _codeController.text,
@@ -68,8 +69,8 @@ class _VerificationPageState extends State<VerificationPage> {
 
     try {
       final response = await http.post(
-        Uri.parse('http://172.172.229.186:8085/auth/resend'),
-        headers: {'Content-Type': 'application/json'},
+        Uri.parse(ApiConfig.resendCodeUrl),
+        headers: ApiConfig.headers,
         body: widget.email,
       );
 
