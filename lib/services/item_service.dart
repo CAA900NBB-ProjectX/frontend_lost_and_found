@@ -59,7 +59,7 @@ class ItemService {
     }
   }
 
-  // Get all items with better error handling
+  // Get all items
   Future<List<Item>> getAllItems() async {
     try {
       final headers = _getHeaders();
@@ -79,37 +79,19 @@ class ItemService {
           return itemsJson.map((json) => Item.fromJson(json)).toList();
         } catch (e) {
           print('JSON parsing error: $e');
-
-          // If we're in development, return mock data
-          if (ApiConfig.isDevelopment) {
-            print('Development mode: Returning mock items');
-            return _getMockItems();
-          }
           return [];
         }
       } else {
         print('Failed to load items: ${response.statusCode}');
-
-        // In development, return mock data
-        if (ApiConfig.isDevelopment) {
-          print('Development mode: Returning mock items');
-          return _getMockItems();
-        }
         return [];
       }
     } catch (e) {
       print('Error getting all items: $e');
-
-      // In development, return mock data
-      if (ApiConfig.isDevelopment) {
-        print('Development mode: Returning mock items');
-        return _getMockItems();
-      }
       return [];
     }
   }
 
-  // Create a new item with improved error handling
+  // Create a new item
   Future<Item?> createItem(Item item) async {
     try {
       final headers = _getHeaders();
@@ -135,65 +117,14 @@ class ItemService {
           return Item.fromJson(responseJson);
         } catch (e) {
           print('Error parsing response: $e');
-
-          // If server succeeded but JSON parsing failed, return a mock success
-          if (ApiConfig.isDevelopment) {
-            print('Development mode: Returning mock created item');
-            return Item(
-              itemId: DateTime.now().millisecondsSinceEpoch % 10000,
-              itemName: item.itemName,
-              description: item.description,
-              categoryId: item.categoryId,
-              locationFound: item.locationFound,
-              dateTimeFound: item.dateTimeFound,
-              reportedBy: item.reportedBy,
-              contactInfo: item.contactInfo,
-              status: item.status,
-            );
-          }
           return null;
         }
       } else {
         print('Failed to create item: ${response.statusCode}');
-
-        // In development with server error, mock success for UI testing
-        if (ApiConfig.isDevelopment &&
-            (response.statusCode == 500 || response.statusCode == 404)) {
-          print('Development mode: Mocking successful item creation');
-          return Item(
-            itemId: DateTime.now().millisecondsSinceEpoch % 10000,
-            itemName: item.itemName,
-            description: item.description,
-            categoryId: item.categoryId,
-            locationFound: item.locationFound,
-            dateTimeFound: item.dateTimeFound,
-            reportedBy: item.reportedBy,
-            contactInfo: item.contactInfo,
-            status: item.status,
-          );
-        }
-
         return null;
       }
     } catch (e) {
       print('Error creating item: $e');
-
-      // In development, mock success for UI testing
-      if (ApiConfig.isDevelopment) {
-        print('Development mode: Mocking successful item creation after error');
-        return Item(
-          itemId: DateTime.now().millisecondsSinceEpoch % 10000,
-          itemName: item.itemName,
-          description: item.description,
-          categoryId: item.categoryId,
-          locationFound: item.locationFound,
-          dateTimeFound: item.dateTimeFound,
-          reportedBy: item.reportedBy,
-          contactInfo: item.contactInfo,
-          status: item.status,
-        );
-      }
-
       return null;
     }
   }
@@ -219,41 +150,14 @@ class ItemService {
           return Item.fromJson(responseJson);
         } catch (e) {
           print('Error parsing item response: $e');
-
-          // In development, return a mock item
-          if (ApiConfig.isDevelopment) {
-            return _getMockItems().firstWhere(
-                    (item) => item.itemId == itemId,
-                orElse: () => _getMockItems().first
-            );
-          }
-
           return null;
         }
       } else {
         print('Failed to get item: ${response.statusCode}');
-
-        // In development, return a mock item
-        if (ApiConfig.isDevelopment) {
-          return _getMockItems().firstWhere(
-                  (item) => item.itemId == itemId,
-              orElse: () => _getMockItems().first
-          );
-        }
-
         return null;
       }
     } catch (e) {
       print('Error getting item: $e');
-
-      // In development, return a mock item
-      if (ApiConfig.isDevelopment) {
-        return _getMockItems().firstWhere(
-                (item) => item.itemId == itemId,
-            orElse: () => _getMockItems().first
-        );
-      }
-
       return null;
     }
   }
@@ -292,25 +196,9 @@ class ItemService {
 
       _logResponse('Upload Image', response);
 
-      if (response.statusCode >= 200 && response.statusCode < 300) {
-        return true;
-      } else {
-        // For development, pretend upload was successful
-        if (ApiConfig.isDevelopment) {
-          print('Development mode: Mocking successful image upload');
-          return true;
-        }
-        return false;
-      }
+      return response.statusCode >= 200 && response.statusCode < 300;
     } catch (e) {
       print('Error uploading image: $e');
-
-      // For development, pretend upload was successful
-      if (ApiConfig.isDevelopment) {
-        print('Development mode: Mocking successful image upload after error');
-        return true;
-      }
-
       return false;
     }
   }
@@ -334,67 +222,11 @@ class ItemService {
         return response.bodyBytes;
       } else {
         print('Failed to get image: ${response.statusCode}');
-
-        // In development, return a mock image (empty bytes)
-        if (ApiConfig.isDevelopment) {
-          print('Development mode: Returning empty mock image');
-          return List<int>.filled(1024, 0);
-        }
-
         return null;
       }
     } catch (e) {
       print('Error getting image: $e');
-
-      // In development, return a mock image (empty bytes)
-      if (ApiConfig.isDevelopment) {
-        print('Development mode: Returning empty mock image after error');
-        return List<int>.filled(1024, 0);
-      }
-
       return null;
     }
-  }
-
-  // Create mock items for development
-  List<Item> _getMockItems() {
-    return [
-      Item(
-          itemId: 1,
-          itemName: 'Lost Keys',
-          description: 'Set of keys found in the library',
-          categoryId: 3,
-          locationFound: 'Main Library, 2nd floor',
-          dateTimeFound: '2025-03-01T14:30:00',
-          reportedBy: 'John Doe',
-          contactInfo: 'johndoe@example.com',
-          status: 'FOUND',
-          imageIdsList: [101, 102]
-      ),
-      Item(
-          itemId: 2,
-          itemName: 'Blue Backpack',
-          description: 'Blue Nike backpack with laptop inside',
-          categoryId: 3,
-          locationFound: 'Student Center',
-          dateTimeFound: '2025-03-05T09:15:00',
-          reportedBy: 'Jane Smith',
-          contactInfo: 'janesmith@example.com',
-          status: 'FOUND',
-          imageIdsList: [103]
-      ),
-      Item(
-          itemId: 3,
-          itemName: 'iPhone 15',
-          description: 'Black iPhone with cracked screen',
-          categoryId: 1,
-          locationFound: 'Cafeteria',
-          dateTimeFound: '2025-03-10T12:45:00',
-          reportedBy: 'Mike Johnson',
-          contactInfo: 'mike@example.com',
-          status: 'LOST',
-          imageIdsList: [104, 105]
-      ),
-    ];
   }
 }
