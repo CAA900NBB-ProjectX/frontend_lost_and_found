@@ -25,6 +25,34 @@ class ItemService {
     }
   }
 
+  // Get image by ID - kept for backward compatibility
+  Future<List<int>?> getItemImage(int imageId) async {
+    print('Warning: getItemImage is deprecated. Images are now stored as base64 in the item.');
+    try {
+      final headers = _getHeaders();
+      final url = '${ApiConfig.getImageUrl}/$imageId';
+
+      print('Getting image from URL: $url');
+
+      final response = await http.get(
+        Uri.parse(url),
+        headers: headers,
+      );
+
+      _logResponse('Get Image', response);
+
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        return response.bodyBytes;
+      } else {
+        print('Failed to get image: ${response.statusCode}');
+        return null;
+      }
+    } catch (e) {
+      print('Error getting image: $e');
+      return null;
+    }
+  }
+
   // Get headers with auth token
   Map<String, String> _getHeaders() {
     final token = _getToken();

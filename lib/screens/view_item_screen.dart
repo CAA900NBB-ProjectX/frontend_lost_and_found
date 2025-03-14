@@ -26,6 +26,7 @@ class _ViewItemScreenState extends State<ViewItemScreen> {
     _fetchItemDetails();
   }
 
+  // Update the _fetchItemDetails method to handle the new image format:
   Future<void> _fetchItemDetails() async {
     setState(() {
       _isLoading = true;
@@ -43,8 +44,8 @@ class _ViewItemScreenState extends State<ViewItemScreen> {
           });
 
           // Load images if available
-          if (item.imageIdsList != null && item.imageIdsList!.isNotEmpty) {
-            await _loadImages(item.imageIdsList!);
+          if (item.images != null && item.images!.isNotEmpty) {
+            _loadImagesFromBase64(item.images!);
           }
         } else {
           setState(() {
@@ -63,13 +64,20 @@ class _ViewItemScreenState extends State<ViewItemScreen> {
     }
   }
 
-  Future<void> _loadImages(List<int> imageIds) async {
-    for (var imageId in imageIds) {
-      final imageData = await _itemService.getItemImage(imageId);
-      if (imageData != null && mounted) {
-        setState(() {
-          _images.add(Uint8List.fromList(imageData));
-        });
+  void _loadImagesFromBase64(List<ItemImage> images) {
+    for (var image in images) {
+      try {
+        // Extract the base64 data (remove the "data:image/jpeg;base64," part)
+        final base64Data = image.image.split(',')[1];
+        final imageData = base64Decode(base64Data);
+
+        if (mounted) {
+          setState(() {
+            _images.add(Uint8List.fromList(imageData));
+          });
+        }
+      } catch (e) {
+        print('Error loading image from base64: $e');
       }
     }
   }
