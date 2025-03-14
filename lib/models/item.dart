@@ -62,14 +62,15 @@ class Item {
   });
 
   factory Item.fromJson(Map<String, dynamic> json) {
-    // Handle dateTimeFound which can be a List or String
+    // This method stays mostly the same, but let's make sure the dateTimeFound parsing works:
+
     String parseDateTimeFound(dynamic value) {
       if (value == null) {
         return DateTime.now().toIso8601String();
       }
 
       if (value is List) {
-        // Convert [2025, 2, 21, 5, 54, 28, 402000000] to a DateTime string
+        // Convert [2025, 3, 14, 17, 42, 38] to a DateTime string
         try {
           final year = value[0];
           final month = value[1];
@@ -90,6 +91,8 @@ class Item {
         return DateTime.now().toIso8601String();
       }
     }
+
+
 
     // Handle multiple possible keys for itemId
     int? getItemId() {
