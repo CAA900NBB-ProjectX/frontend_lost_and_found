@@ -1,5 +1,41 @@
 import 'dart:convert';
 
+class ItemImage {
+  final String? description;
+  final String image; // Base64 encoded image
+  final String? locationFound;
+  final String? dateTime;
+  final String? status;
+
+  ItemImage({
+    this.description,
+    required this.image,
+    this.locationFound,
+    this.dateTime,
+    this.status,
+  });
+
+  Map<String, dynamic> toJson() {
+    return {
+      if (description != null) 'description': description,
+      'image': image,
+      if (locationFound != null) 'locationFound': locationFound,
+      if (dateTime != null) 'dateTime': dateTime,
+      if (status != null) 'status': status,
+    };
+  }
+
+  factory ItemImage.fromJson(Map<String, dynamic> json) {
+    return ItemImage(
+      description: json['description'],
+      image: json['image'],
+      locationFound: json['locationFound'],
+      dateTime: json['dateTime'],
+      status: json['status'],
+    );
+  }
+}
+
 class Item {
   final int? itemId;
   final String itemName;
@@ -10,7 +46,7 @@ class Item {
   final String reportedBy;
   final String contactInfo;
   final String status;
-  final List<int>? imageIdsList;
+  final List<ItemImage>? images;
 
   Item({
     this.itemId,
@@ -22,7 +58,7 @@ class Item {
     required this.reportedBy,
     required this.contactInfo,
     this.status = "FOUND",
-    this.imageIdsList,
+    this.images,
   });
 
   factory Item.fromJson(Map<String, dynamic> json) {
@@ -55,7 +91,7 @@ class Item {
       }
     }
 
-    // Get item ID safely
+    // Handle multiple possible keys for itemId
     int? getItemId() {
       if (json.containsKey('item_id')) {
         return json['item_id'] as int?;
@@ -65,6 +101,16 @@ class Item {
       }
       if (json.containsKey('id')) {
         return json['id'] as int?;
+      }
+      return null;
+    }
+
+    // Parse images if available
+    List<ItemImage>? parseImages() {
+      if (json['images'] != null && json['images'] is List) {
+        return (json['images'] as List)
+            .map((imgJson) => ItemImage.fromJson(imgJson))
+            .toList();
       }
       return null;
     }
@@ -79,16 +125,12 @@ class Item {
       reportedBy: json['reportedBy'] ?? '',
       contactInfo: json['contactInfo'] ?? '',
       status: json['status'] ?? "FOUND",
-      imageIdsList: json['imageIdsList'] != null
-          ? (json['imageIdsList'] is List
-          ? List<int>.from(json['imageIdsList'])
-          : null)
-          : null,
+      images: parseImages(),
     );
   }
 
   Map<String, dynamic> toJson() {
-    return {
+    final map = {
       'itemName': itemName,
       'description': description,
       'categoryId': categoryId,
@@ -97,8 +139,13 @@ class Item {
       'reportedBy': reportedBy,
       'contactInfo': contactInfo,
       'status': status,
-      if (imageIdsList != null) 'imageIdsList': imageIdsList,
     };
+
+    if (images != null && images!.isNotEmpty) {
+      map['images'] = images!.map((img) => img.toJson()).toList();
+    }
+
+    return map;
   }
 
   // Helper method to get category name from category ID

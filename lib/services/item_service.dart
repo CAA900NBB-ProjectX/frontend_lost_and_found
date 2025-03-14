@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:http/http.dart' as http;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -91,10 +92,46 @@ class ItemService {
     }
   }
 
-  // Create a new item
-  Future<Item?> createItem(Item item) async {
+  // Create a new item with images as base64
+  Future<Item?> createItem(Item item, {List<Uint8List>? imageBytes, List<String>? imageNames}) async {
     try {
       final headers = _getHeaders();
+
+      // If images were provided separately, convert them to base64 and add to the item
+      if (imageBytes != null && imageBytes.isNotEmpty) {
+        final List<ItemImage> images = [];
+
+        for (int i = 0; i < imageBytes.length; i++) {
+          final String base64Image = base64Encode(imageBytes[i]);
+          final String imageName = i < imageNames!.length ? imageNames[i] : 'image_${i+1}.jpg';
+
+          images.add(ItemImage(
+            description: 'Image of ${item.itemName}',
+            image: 'data:image/jpeg;base64,$base64Image',
+            locationFound: item.locationFound,
+            dateTime: DateTime.now().toIso8601String().substring(11, 19), // HH:MM:SS
+            status: item.status,
+          ));
+        }
+
+        // Create a new item with the images
+        final newItem = Item(
+          itemId: item.itemId,
+          itemName: item.itemName,
+          description: item.description,
+          categoryId: item.categoryId,
+          locationFound: item.locationFound,
+          dateTimeFound: item.dateTimeFound,
+          reportedBy: item.reportedBy,
+          contactInfo: item.contactInfo,
+          status: item.status,
+          images: images,
+        );
+
+        // Use the new item with images for the request
+        item = newItem;
+      }
+
       final jsonData = item.toJson();
       final jsonBody = jsonEncode(jsonData);
       final url = ApiConfig.insertItemUrl;
@@ -162,37 +199,62 @@ class ItemService {
     }
   }
 
-  // Upload image for an item
+  // This method will now upload an image for an item by updating the item
+  // with a new image in base64 format
   Future<bool> uploadItemImage(int itemId, List<int> imageBytes, String imageName) async {
     try {
-      final token = _getToken();
-      final url = '${ApiConfig.uploadImageUrl}/$itemId';
-
-      print('Uploading image to URL: $url');
-
-      // Create multipart request
-      final request = http.MultipartRequest(
-        'POST',
-        Uri.parse(url),
-      );
-
-      // Add auth header
-      if (token != null && token.isNotEmpty) {
-        request.headers['Authorization'] = 'Bearer $token';
+      // First, get the current item
+      final item = await getItemById(itemId);
+      if (item == null) {
+        print('Failed to get item for image upload');
+        return false;
       }
 
-      // Add the image file
-      request.files.add(
-        http.MultipartFile.fromBytes(
-          'image',
-          imageBytes,
-          filename: imageName,
-        ),
+      // Convert image to base64
+      final String base64Image = base64Encode(imageBytes);
+
+      // Create a new image object
+      final newImage = ItemImage(
+        description: 'Image of ${item.itemName}',
+        image: 'data:image/jpeg;base64,$base64Image',
+        locationFound: item.locationFound,
+        dateTime: DateTime.now().toIso8601String().substring(11, 19), // HH:MM:SS
+        status: item.status,
       );
 
-      print('Sending upload request...');
-      final streamedResponse = await request.send();
-      final response = await http.Response.fromStream(streamedResponse);
+      // Add image to the item's images list
+      final List<ItemImage> updatedImages = item.images?.toList() ?? [];
+      updatedImages.add(newImage);
+
+      // Create updated item
+      final updatedItem = Item(
+        itemId: item.itemId,
+        itemName: item.itemName,
+        description: item.description,
+        categoryId: item.categoryId,
+        locationFound: item.locationFound,
+        dateTimeFound: item.dateTimeFound,
+        reportedBy: item.reportedBy,
+        contactInfo: item.contactInfo,
+        status: item.status,
+        images: updatedImages,
+      );
+
+      // Update the item with the new image
+      final headers = _getHeaders();
+      final jsonData = updatedItem.toJson();
+      final jsonBody = jsonEncode(jsonData);
+      final url = '${ApiConfig.updateItemUrl}/${item.itemId}';
+
+      print('Uploading image to URL: $url');
+      print('With headers: $headers');
+      print('Sending JSON with image: ${jsonBody.substring(0, min(100, jsonBody.length))}...');
+
+      final response = await http.put(
+        Uri.parse(url),
+        headers: headers,
+        body: jsonBody,
+      );
 
       _logResponse('Upload Image', response);
 
@@ -203,30 +265,8 @@ class ItemService {
     }
   }
 
-  // Get image by ID
-  Future<List<int>?> getItemImage(int imageId) async {
-    try {
-      final headers = _getHeaders();
-      final url = '${ApiConfig.getImageUrl}/$imageId';
-
-      print('Getting image from URL: $url');
-
-      final response = await http.get(
-        Uri.parse(url),
-        headers: headers,
-      );
-
-      _logResponse('Get Image', response);
-
-      if (response.statusCode >= 200 && response.statusCode < 300) {
-        return response.bodyBytes;
-      } else {
-        print('Failed to get image: ${response.statusCode}');
-        return null;
-      }
-    } catch (e) {
-      print('Error getting image: $e');
-      return null;
-    }
+  // Helper method to get minimum of two integers
+  int min(int a, int b) {
+    return a < b ? a : b;
   }
 }
