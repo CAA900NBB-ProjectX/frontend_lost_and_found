@@ -26,17 +26,24 @@ class Item {
   });
 
   factory Item.fromJson(Map<String, dynamic> json) {
-    // Handle dateTimeFound which can be a List or String
+    // Helper function to safely parse values
+    T? safeGet<T>(Map<String, dynamic> map, String key) {
+      return map.containsKey(key) ? map[key] as T? : null;
+    }
+
+    // Handle dateTimeFound which can be in various formats
     String parseDateTimeFound(dynamic value) {
-      if (value is List) {
+      if (value == null) {
+        return DateTime.now().toIso8601String();
+      } else if (value is List) {
         // Convert [2025, 2, 21, 5, 54, 28, 402000000] to a DateTime string
         try {
           final year = value[0];
           final month = value[1];
           final day = value[2];
-          final hour = value[3];
-          final minute = value[4];
-          final second = value[5];
+          final hour = value.length > 3 ? value[3] : 0;
+          final minute = value.length > 4 ? value[4] : 0;
+          final second = value.length > 5 ? value[5] : 0;
 
           return '$year-${month.toString().padLeft(2, '0')}-${day.toString().padLeft(2, '0')}T' +
               '${hour.toString().padLeft(2, '0')}:${minute.toString().padLeft(2, '0')}:${second.toString().padLeft(2, '0')}';
@@ -51,21 +58,33 @@ class Item {
       }
     }
 
+    // Handle image IDs list which might be in different formats
+    List<int>? parseImageIds(dynamic value) {
+      if (value == null) return null;
+
+      if (value is List) {
+        return value.map((item) => item is int ? item : int.tryParse(item.toString()) ?? 0).toList();
+      }
+
+      return null;
+    }
+
+    // Item ID could be item_id, itemId, or id
+    int? itemId = safeGet<int>(json, 'item_id') ??
+        safeGet<int>(json, 'itemId') ??
+        safeGet<int>(json, 'id');
+
     return Item(
-      itemId: json['item_id'],
-      itemName: json['itemName'] ?? '',
-      description: json['description'] ?? '',
-      categoryId: json['categoryId'] ?? 0,
-      locationFound: json['locationFound'] ?? '',
+      itemId: itemId,
+      itemName: safeGet<String>(json, 'itemName') ?? '',
+      description: safeGet<String>(json, 'description') ?? '',
+      categoryId: safeGet<int>(json, 'categoryId') ?? 0,
+      locationFound: safeGet<String>(json, 'locationFound') ?? '',
       dateTimeFound: parseDateTimeFound(json['dateTimeFound']),
-      reportedBy: json['reportedBy'] ?? '',
-      contactInfo: json['contactInfo'] ?? '',
-      status: json['status'] ?? "FOUND",
-      imageIdsList: json['imageIdsList'] != null
-          ? (json['imageIdsList'] is List
-          ? List<int>.from(json['imageIdsList'])
-          : null)
-          : null,
+      reportedBy: safeGet<String>(json, 'reportedBy') ?? '',
+      contactInfo: safeGet<String>(json, 'contactInfo') ?? '',
+      status: safeGet<String>(json, 'status') ?? "FOUND",
+      imageIdsList: parseImageIds(json['imageIdsList']),
     );
   }
 
