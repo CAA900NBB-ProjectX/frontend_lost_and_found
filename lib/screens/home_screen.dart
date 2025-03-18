@@ -173,33 +173,10 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                   ),
                 ),
                 width: double.infinity,
-                child: item.imageIdsList != null && item.imageIdsList!.isNotEmpty
-                    ? FutureBuilder<List<int>?>(
-                  future: _itemService.getItemImage(item.imageIdsList![0]),
-                  builder: (context, snapshot) {
-                    if (snapshot.connectionState == ConnectionState.done &&
-                        snapshot.hasData &&
-                        snapshot.data != null) {
-                      return ClipRRect(
-                        borderRadius: const BorderRadius.only(
-                          topLeft: Radius.circular(12),
-                          topRight: Radius.circular(12),
-                        ),
-                        child: Image.memory(
-                          Uint8List.fromList(snapshot.data!),
-                          fit: BoxFit.cover,
-                        ),
-                      );
-                    } else {
-                      return Center(
-                        child: Icon(
-                          _getCategoryIcon(item.categoryId),
-                          size: 40,
-                          color: Colors.white,
-                        ),
-                      );
-                    }
-                  },
+                child: item.images != null && item.images!.isNotEmpty
+                    ? Image.memory(
+                  base64Decode(item.images![0].image.split(',')[1]),
+                  fit: BoxFit.cover,
                 )
                     : Center(
                   child: Icon(

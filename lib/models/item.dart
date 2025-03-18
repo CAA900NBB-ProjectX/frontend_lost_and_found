@@ -1,5 +1,41 @@
 import 'dart:convert';
 
+class ItemImage {
+  final String? description;
+  final String image; // Base64 encoded image
+  final String? locationFound;
+  final String? dateTime;
+  final String? status;
+
+  ItemImage({
+    this.description,
+    required this.image,
+    this.locationFound,
+    this.dateTime,
+    this.status,
+  });
+
+  Map<String, dynamic> toJson() {
+    return {
+      if (description != null) 'description': description,
+      'image': image,
+      if (locationFound != null) 'locationFound': locationFound,
+      if (dateTime != null) 'dateTime': dateTime,
+      if (status != null) 'status': status,
+    };
+  }
+
+  factory ItemImage.fromJson(Map<String, dynamic> json) {
+    return ItemImage(
+      description: json['description'],
+      image: json['image'],
+      locationFound: json['locationFound'],
+      dateTime: json['dateTime'],
+      status: json['status'],
+    );
+  }
+}
+
 class Item {
   final int? itemId;
   final String itemName;
@@ -10,7 +46,7 @@ class Item {
   final String reportedBy;
   final String contactInfo;
   final String status;
-  final List<int>? imageIdsList;
+  final List<ItemImage>? images;
 
   Item({
     this.itemId,
@@ -22,21 +58,26 @@ class Item {
     required this.reportedBy,
     required this.contactInfo,
     this.status = "FOUND",
-    this.imageIdsList,
+    this.images,
   });
 
   factory Item.fromJson(Map<String, dynamic> json) {
-    // Handle dateTimeFound which can be a List or String
+    // This method stays mostly the same, but let's make sure the dateTimeFound parsing works:
+
     String parseDateTimeFound(dynamic value) {
+      if (value == null) {
+        return DateTime.now().toIso8601String();
+      }
+
       if (value is List) {
-        // Convert [2025, 2, 21, 5, 54, 28, 402000000] to a DateTime string
+        // Convert [2025, 3, 14, 17, 42, 38] to a DateTime string
         try {
           final year = value[0];
           final month = value[1];
           final day = value[2];
-          final hour = value[3];
-          final minute = value[4];
-          final second = value[5];
+          final hour = value.length > 3 ? value[3] : 0;
+          final minute = value.length > 4 ? value[4] : 0;
+          final second = value.length > 5 ? value[5] : 0;
 
           return '$year-${month.toString().padLeft(2, '0')}-${day.toString().padLeft(2, '0')}T' +
               '${hour.toString().padLeft(2, '0')}:${minute.toString().padLeft(2, '0')}:${second.toString().padLeft(2, '0')}';
@@ -51,8 +92,34 @@ class Item {
       }
     }
 
+
+
+    // Handle multiple possible keys for itemId
+    int? getItemId() {
+      if (json.containsKey('item_id')) {
+        return json['item_id'] as int?;
+      }
+      if (json.containsKey('itemId')) {
+        return json['itemId'] as int?;
+      }
+      if (json.containsKey('id')) {
+        return json['id'] as int?;
+      }
+      return null;
+    }
+
+    // Parse images if available
+    List<ItemImage>? parseImages() {
+      if (json['images'] != null && json['images'] is List) {
+        return (json['images'] as List)
+            .map((imgJson) => ItemImage.fromJson(imgJson))
+            .toList();
+      }
+      return null;
+    }
+
     return Item(
-      itemId: json['item_id'],
+      itemId: getItemId(),
       itemName: json['itemName'] ?? '',
       description: json['description'] ?? '',
       categoryId: json['categoryId'] ?? 0,
@@ -61,16 +128,12 @@ class Item {
       reportedBy: json['reportedBy'] ?? '',
       contactInfo: json['contactInfo'] ?? '',
       status: json['status'] ?? "FOUND",
-      imageIdsList: json['imageIdsList'] != null
-          ? (json['imageIdsList'] is List
-          ? List<int>.from(json['imageIdsList'])
-          : null)
-          : null,
+      images: parseImages(),
     );
   }
 
   Map<String, dynamic> toJson() {
-    return {
+    final map = {
       'itemName': itemName,
       'description': description,
       'categoryId': categoryId,
@@ -79,8 +142,13 @@ class Item {
       'reportedBy': reportedBy,
       'contactInfo': contactInfo,
       'status': status,
-      if (imageIdsList != null) 'imageIdsList': imageIdsList,
     };
+
+    if (images != null && images!.isNotEmpty) {
+      map['images'] = images!.map((img) => img.toJson()).toList();
+    }
+
+    return map;
   }
 
   // Helper method to get category name from category ID
