@@ -2,7 +2,8 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 
 class ApiConfig {
   static String get baseUrl {
-    return 'http://172.206.240.144:8085';
+    // return 'http://172.206.240.144:8085';
+    return 'https://2c48-74-12-27-5.ngrok-free.app';
   }
   static String get authBaseUrl => '$baseUrl/auth';
   static String get loginUrl => '$authBaseUrl/login';

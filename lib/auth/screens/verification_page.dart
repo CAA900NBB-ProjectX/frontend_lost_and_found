@@ -35,8 +35,6 @@ class _VerificationPageState extends State<VerificationPage> {
         }),
       );
 
-      // print('Response: ${response.body}');
-
       if (response.statusCode == 200) {
         if (mounted) {
           Navigator.pushReplacementNamed(context, '/login');
@@ -48,7 +46,6 @@ class _VerificationPageState extends State<VerificationPage> {
         });
       }
     } catch (e) {
-      // print('Exception caught: $e');
       setState(() {
         _errorMessage = 'Connection error. Please try again.';
       });
@@ -103,84 +100,162 @@ class _VerificationPageState extends State<VerificationPage> {
 
   @override
   Widget build(BuildContext context) {
+    final isDesktop = MediaQuery.of(context).size.width > 800;
+
     return Scaffold(
-      body: Container(
-        margin: const EdgeInsets.all(24),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              const Text(
-                "Verify Your Email",
-                style: TextStyle(
-                  fontSize: 30,
-                  fontWeight: FontWeight.bold,
-                ),
-                textAlign: TextAlign.center,
+      backgroundColor: Color(0xFF1A1A1A),
+      body: SafeArea(
+        child: Center(
+          child: SingleChildScrollView(
+            child: Container(
+              constraints: BoxConstraints(
+                maxWidth: 450,
               ),
-              const SizedBox(height: 20),
-              Text(
-                "A verification code has been sent to ${widget.email}",
-                style: const TextStyle(fontSize: 16),
-                textAlign: TextAlign.center,
+              margin: EdgeInsets.all(24),
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Text(
+                      "Verify Your Email",
+                      style: TextStyle(
+                        fontFamily: 'Helvetica',
+                        fontSize: isDesktop ? 32 : 28,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    SizedBox(height: 20),
+                    Text(
+                      "A verification code has been sent to ${widget.email}",
+                      style: TextStyle(
+                        fontFamily: 'Helvetica',
+                        fontSize: 16,
+                        color: Colors.grey[300],
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    SizedBox(height: 30),
+                    if (_errorMessage != null)
+                      Container(
+                        padding: EdgeInsets.symmetric(vertical: 10, horizontal: 16),
+                        decoration: BoxDecoration(
+                          color: _errorMessage!.contains('sent')
+                              ? Colors.green.withOpacity(0.1)
+                              : Colors.red.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          _errorMessage!,
+                          style: TextStyle(
+                            fontFamily: 'Helvetica',
+                            color: _errorMessage!.contains('sent')
+                                ? Colors.green[400]
+                                : Colors.red[400],
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                    SizedBox(height: 24),
+                    Text(
+                      "Verification Code",
+                      style: TextStyle(
+                        fontFamily: 'Helvetica',
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                        color: Colors.grey[300],
+                      ),
+                      textAlign: TextAlign.left,
+                    ),
+                    SizedBox(height: 8),
+                    TextFormField(
+                      controller: _codeController,
+                      style: TextStyle(
+                        fontFamily: 'Helvetica',
+                        color: Colors.white,
+                      ),
+                      decoration: InputDecoration(
+                        hintText: "Enter Verification Code",
+                        hintStyle: TextStyle(
+                          fontFamily: 'Helvetica',
+                          color: Colors.grey[600],
+                        ),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide.none,
+                        ),
+                        fillColor: Color(0xFF2C2C2C),
+                        filled: true,
+                        prefixIcon: Icon(
+                          Icons.security,
+                          color: Colors.grey[500],
+                        ),
+                        contentPadding: EdgeInsets.symmetric(
+                          vertical: 16,
+                          horizontal: 16,
+                        ),
+                      ),
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return 'Please enter verification code';
+                        }
+                        return null;
+                      },
+                    ),
+                    SizedBox(height: 24),
+                    SizedBox(
+                      height: 50,
+                      child: ElevatedButton(
+                        onPressed: _isLoading ? null : _verifyCode,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Color(0xFF8BC34A),
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          elevation: 2,
+                          shadowColor: Color(0xFF8BC34A).withOpacity(0.5),
+                        ),
+                        child: _isLoading
+                            ? SizedBox(
+                          height: 24,
+                          width: 24,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                            : Text(
+                          "Verify Email",
+                          style: TextStyle(
+                            fontFamily: 'Helvetica',
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
+                    SizedBox(height: 16),
+                    TextButton(
+                      onPressed: _isLoading ? null : _resendCode,
+                      style: TextButton.styleFrom(
+                        foregroundColor: Color(0xFF8BC34A),
+                      ),
+                      child: Text(
+                        "Resend Code",
+                        style: TextStyle(
+                          fontFamily: 'Helvetica',
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
-              const SizedBox(height: 30),
-              if (_errorMessage != null)
-                Text(
-                  _errorMessage!,
-                  style: TextStyle(
-                    color: _errorMessage!.contains('sent')
-                        ? Colors.green
-                        : Colors.red,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-              const SizedBox(height: 20),
-              TextFormField(
-                controller: _codeController,
-                decoration: InputDecoration(
-                  hintText: "Enter Verification Code",
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(18),
-                    borderSide: BorderSide.none,
-                  ),
-                  fillColor: Colors.purple.withOpacity(0.1),
-                  filled: true,
-                  prefixIcon: const Icon(Icons.security),
-                ),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Please enter verification code';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 20),
-              ElevatedButton(
-                onPressed: _isLoading ? null : _verifyCode,
-                style: ElevatedButton.styleFrom(
-                  shape: const StadiumBorder(),
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  backgroundColor: Colors.purple,
-                ),
-                child: _isLoading
-                    ? const CircularProgressIndicator(color: Colors.white)
-                    : const Text(
-                  "Verify Email",
-                  style: TextStyle(fontSize: 20, color: Colors.white),
-                ),
-              ),
-              const SizedBox(height: 20),
-              TextButton(
-                onPressed: _isLoading ? null : _resendCode,
-                child: const Text(
-                  "Resend Code",
-                  style: TextStyle(color: Colors.purple),
-                ),
-              ),
-            ],
+            ),
           ),
         ),
       ),
