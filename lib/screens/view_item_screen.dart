@@ -7,6 +7,7 @@ import 'dart:convert';
 import '../auth/services/auth_service.dart';
 import '../services/chat_service.dart';
 import 'chat_screen.dart';
+import 'chat_list_screen.dart';
 
 class ViewItemScreen extends StatefulWidget {
   final int itemId;
@@ -47,7 +48,7 @@ class _ViewItemScreenState extends State<ViewItemScreen> {
             _isLoading = false;
           });
 
-          // Load images if available
+
           if (item.images != null && item.images!.isNotEmpty) {
             _loadImagesFromBase64(item.images!);
           }
@@ -71,7 +72,6 @@ class _ViewItemScreenState extends State<ViewItemScreen> {
   void _loadImagesFromBase64(List<ItemImage> images) {
     for (var image in images) {
       try {
-
         final base64Data = image.image.split(',')[1];
         final imageData = base64Decode(base64Data);
 
@@ -95,10 +95,7 @@ class _ViewItemScreenState extends State<ViewItemScreen> {
     }
   }
 
-
-
   Future<void> _initiateChat() async {
-
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -115,19 +112,15 @@ class _ViewItemScreenState extends State<ViewItemScreen> {
 
     try {
       final chatService = ChatService();
-
-
       final token = await _authService.getToken();
 
       if (token == null) {
-
         if (context.mounted) Navigator.pop(context);
         ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Please log in to chat'))
         );
         return;
       }
-
 
       final String? currentUserIdNullable = _getUserIdFromToken(token);
       if (currentUserIdNullable == null) {
@@ -138,43 +131,55 @@ class _ViewItemScreenState extends State<ViewItemScreen> {
         return;
       }
 
-
       final String currentUserId = currentUserIdNullable;
-
-
       final int itemId = _item?.itemId ?? 0;
-      final String receiverId = _item?.reportedBy ?? "";
+      final String reportedBy = _item?.reportedBy ?? "";
+
+
+      if (currentUserId == reportedBy) {
+
+        if (context.mounted) Navigator.pop(context);
+
+
+        if (context.mounted) {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => ChatListScreen(
+                itemId: itemId,
+                itemName: _item?.itemName ?? "Item",
+                reportedBy: _item?.reportedBy ?? "",
+              ),
+            ),
+          );
+        }
+        return;
+      }
 
 
       final existingChat = await chatService.checkExistingChat(
         token,
-        receiverId,
+        reportedBy,
         itemId,
       );
 
       String? chatId;
 
       if (existingChat != null) {
-
         chatId = existingChat['id'] as String?;
       } else {
-
         chatId = await chatService.createChat(
           token,
-          receiverId,
+          reportedBy,
           itemId,
         );
       }
 
-
       if (context.mounted) Navigator.pop(context);
 
       if (chatId != null && chatId.isNotEmpty && context.mounted) {
-
         final String nonNullChatId = chatId;
-
         final String itemName = _item?.itemName ?? "Item";
-
 
         Navigator.push(
           context,
@@ -182,7 +187,7 @@ class _ViewItemScreenState extends State<ViewItemScreen> {
             builder: (context) => ChatScreen(
               chatId: nonNullChatId,
               currentUserId: currentUserId,
-              receiverId: receiverId,
+              receiverId: reportedBy,
               itemId: itemId,
               itemName: itemName,
             ),
@@ -194,13 +199,30 @@ class _ViewItemScreenState extends State<ViewItemScreen> {
         );
       }
     } catch (e) {
-
       if (context.mounted) Navigator.pop(context);
       ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Error: $e'))
       );
     }
   }
+
+  String? _getUserIdFromToken(String token) {
+    try {
+      final parts = token.split('.');
+      if (parts.length != 3) return null;
+
+      final payload = parts[1];
+      final normalized = base64Url.normalize(payload);
+      final decoded = utf8.decode(base64Url.decode(normalized));
+      final Map<String, dynamic> data = json.decode(decoded);
+
+      return data['sub'] ?? data['user_id'] ?? data['id'] ?? data['userId'];
+    } catch (e) {
+      print('Error extracting user ID from token: $e');
+      return null;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -328,7 +350,7 @@ class _ViewItemScreenState extends State<ViewItemScreen> {
 
           const SizedBox(height: 20),
 
-          // Action buttons
+
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
@@ -363,27 +385,6 @@ class _ViewItemScreenState extends State<ViewItemScreen> {
         ],
       ),
     );
-  }
-
-
-  String? _getUserIdFromToken(String token) {
-    try {
-
-      final parts = token.split('.');
-      if (parts.length != 3) return null;
-
-
-      final payload = parts[1];
-      final normalized = base64Url.normalize(payload);
-      final decoded = utf8.decode(base64Url.decode(normalized));
-      final Map<String, dynamic> data = json.decode(decoded);
-
-
-      return data['sub'] ?? data['user_id'] ?? data['id'] ?? data['userId'];
-    } catch (e) {
-      print('Error extracting user ID from token: $e');
-      return null;
-    }
   }
 
   Widget _buildDetailRow(IconData icon, String label, String value) {
