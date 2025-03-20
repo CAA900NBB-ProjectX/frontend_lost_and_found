@@ -45,6 +45,7 @@ class ApiConfig {
   static String get createChatUrl => '$chatApiUrl/create';
   static String get getChatMessagesUrl => '$messageApiUrl/chat';
   static String get sendMessageUrl => '$messageApiUrl/save';
+  static String get getChatListUrl => '$chatApiUrl/getchatlist';
 
 
   static String get wsEndpoint => '$wsUrl/ws';
