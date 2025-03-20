@@ -5,6 +5,10 @@ import '../services/chat_service.dart';
 import '../auth/services/auth_service.dart';
 import 'chat_screen.dart';
 
+
+Map<String, dynamic>? globalChatData;
+
+
 class ChatListScreen extends StatefulWidget {
   final int itemId;
   final String itemName;
@@ -231,7 +235,8 @@ class _ChatListScreenState extends State<ChatListScreen> {
       );
       return;
     }
-
+    globalChatData = chat;
+    print('Chat Data Stored Globally: $globalChatData');
 
     final isSender = _currentUserId == chat['senderId'].toString();
     final otherUserId = isSender
@@ -244,10 +249,11 @@ class _ChatListScreenState extends State<ChatListScreen> {
         builder: (context) =>
             ChatScreen(
               chatId: chat['id'],
-              currentUserId: _currentUserId!,
-              receiverId: otherUserId,
+              currentUsername: _currentUserId!,
+              receiverUsername: otherUserId,
               itemId: widget.itemId,
               itemName: widget.itemName,
+              receiver:chat['senderUsername']
             ),
       ),
     ).then((_) => _loadChats());

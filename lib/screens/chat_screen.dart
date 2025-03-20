@@ -5,18 +5,20 @@ import '../auth/services/auth_service.dart';
 
 class ChatScreen extends StatefulWidget {
   final String chatId;
-  final String currentUserId;
-  final String receiverId;
+  final String currentUsername;
+  final String receiverUsername;
   final int itemId;
   final String itemName;
+  final String receiver;//
 
   const ChatScreen({
     Key? key,
     required this.chatId,
-    required this.currentUserId,
-    required this.receiverId,
+    required this.currentUsername,
+    required this.receiverUsername,
     required this.itemId,
     required this.itemName,
+    required this.receiver, //
   }) : super(key: key);
 
   @override
@@ -69,7 +71,7 @@ class _ChatScreenState extends State<ChatScreen> {
       }
 
 
-      _chatService.connectWebSocket(widget.chatId, widget.currentUserId);
+      _chatService.connectWebSocket(widget.chatId, widget.currentUsername,);
 
 
       _chatService.messages.addListener(_onMessagesUpdated);
@@ -144,8 +146,8 @@ class _ChatScreenState extends State<ChatScreen> {
         content: messageText,
         type: MessageType.TEXT,
         state: MessageState.SENT,
-        senderId: widget.currentUserId,
-        receiverId: widget.receiverId,
+        senderId: widget.currentUsername,
+        receiverId: widget.receiver,//
         createdAt: DateTime.now(),
       );
 
@@ -167,8 +169,8 @@ class _ChatScreenState extends State<ChatScreen> {
 
       final success = await _chatService.sendMessage(
         content: messageText,
-        senderId: widget.currentUserId,
-        receiverId: widget.receiverId,
+        senderUsername: widget.currentUsername,
+        receiverUsername: widget.receiverUsername,
         itemId: widget.itemId,
         chatId: widget.chatId,
         token: token,
@@ -324,7 +326,7 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   Widget _buildMessageBubble(ChatMessage message) {
-    final isMe = message.senderId == widget.currentUserId;
+    final isMe = message.senderId == widget.currentUsername;
 
     return Align(
       alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
@@ -446,3 +448,4 @@ class _ChatScreenState extends State<ChatScreen> {
     super.dispose();
   }
 }
+

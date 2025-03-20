@@ -122,8 +122,9 @@ class _ViewItemScreenState extends State<ViewItemScreen> {
         return;
       }
 
-      final String? currentUserIdNullable = _getUserIdFromToken(token);
-      if (currentUserIdNullable == null) {
+
+      final String? currentUsername = extractUsernameFromToken(token);
+      if (currentUsername == null) {
         if (context.mounted) Navigator.pop(context);
         ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Unable to get user information from token'))
@@ -131,16 +132,15 @@ class _ViewItemScreenState extends State<ViewItemScreen> {
         return;
       }
 
-      final String currentUserId = currentUserIdNullable;
       final int itemId = _item?.itemId ?? 0;
       final String reportedBy = _item?.reportedBy ?? "";
 
 
-      if (currentUserId == reportedBy) {
-
+      if (currentUsername == reportedBy) {
+        // Close loading dialog
         if (context.mounted) Navigator.pop(context);
 
-
+        //Bro  if the current user is the reporter, show the chat list
         if (context.mounted) {
           Navigator.push(
             context,
@@ -148,7 +148,7 @@ class _ViewItemScreenState extends State<ViewItemScreen> {
               builder: (context) => ChatListScreen(
                 itemId: itemId,
                 itemName: _item?.itemName ?? "Item",
-                reportedBy: _item?.reportedBy ?? "",
+                reportedBy: reportedBy,
               ),
             ),
           );
@@ -186,10 +186,11 @@ class _ViewItemScreenState extends State<ViewItemScreen> {
           MaterialPageRoute(
             builder: (context) => ChatScreen(
               chatId: nonNullChatId,
-              currentUserId: currentUserId,
-              receiverId: reportedBy,
+              currentUsername: currentUsername,
+              receiverUsername: reportedBy,
               itemId: itemId,
               itemName: itemName,
+              receiver: reportedBy, // need to check n]bro
             ),
           ),
         );
@@ -206,7 +207,7 @@ class _ViewItemScreenState extends State<ViewItemScreen> {
     }
   }
 
-  String? _getUserIdFromToken(String token) {
+  String? extractUsernameFromToken(String token) {
     try {
       final parts = token.split('.');
       if (parts.length != 3) return null;
@@ -216,9 +217,15 @@ class _ViewItemScreenState extends State<ViewItemScreen> {
       final decoded = utf8.decode(base64Url.decode(normalized));
       final Map<String, dynamic> data = json.decode(decoded);
 
-      return data['sub'] ?? data['user_id'] ?? data['id'] ?? data['userId'];
+
+      return data['username'] ??
+          data['preferred_username'] ??
+          data['email'] ??
+          data['sub'] ??
+          data['userId'] ??
+          data['name'];
     } catch (e) {
-      print('Error extracting user ID from token: $e');
+      print('Error extracting username from token: $e');
       return null;
     }
   }

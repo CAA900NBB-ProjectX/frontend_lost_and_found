@@ -1,3 +1,6 @@
+import 'package:flutter/foundation.dart';
+import 'package:http/http.dart' as http;
+import 'package:stomp_dart_client/stomp.dart';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
@@ -28,6 +31,7 @@ class ChatMessage {
   final String receiverId;
   final DateTime createdAt;
   final List<int>? media;
+
 
   ChatMessage({
     required this.id,
@@ -99,7 +103,7 @@ class ChatService {
   }
 
 
-  Future<String?> createChat(String token, String receiverId, int itemId) async {
+  Future<String?> createChat(String token, String receiverUsername, int itemId) async {
     try {
       final response = await http.post(
         Uri.parse('${ApiConfig.createChatUrl}'),
@@ -110,7 +114,7 @@ class ChatService {
         },
         body: json.encode({
           'token':token,
-          'receiverId': receiverId,
+          'receiverId': receiverUsername,
           'itemId': itemId,
         }),
       );
@@ -235,8 +239,8 @@ class ChatService {
 
   Future<bool> sendMessage({
     required String content,
-    required String senderId,
-    required String receiverId,
+    required String senderUsername,
+    required String receiverUsername,
     required int itemId,
     required String chatId,
     required String token,
@@ -244,8 +248,8 @@ class ChatService {
     try {
       final message = {
         'content': content,
-        'senderId': senderId,
-        'receiverId': receiverId,
+        'senderId': senderUsername,
+        'receiverId': receiverUsername,
         'itemId': itemId,
         'type': MessageType.TEXT,
         'chatId': chatId,
