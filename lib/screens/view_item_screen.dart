@@ -3,7 +3,10 @@ import 'dart:typed_data';
 import 'package:intl/intl.dart';
 import '../models/item.dart';
 import '../services/item_service.dart';
-import 'dart:convert'; // Add this line to import base64Decode
+import 'dart:convert'; // For base64Decode
+import '../auth/services/auth_service.dart';
+import '../services/chat_service.dart';
+import 'chat_screen.dart';
 
 class ViewItemScreen extends StatefulWidget {
   final int itemId;
@@ -16,6 +19,7 @@ class ViewItemScreen extends StatefulWidget {
 
 class _ViewItemScreenState extends State<ViewItemScreen> {
   final ItemService _itemService = ItemService();
+  final AuthService _authService = AuthService();
   bool _isLoading = true;
   String? _errorMessage;
   Item? _item;
@@ -27,7 +31,6 @@ class _ViewItemScreenState extends State<ViewItemScreen> {
     _fetchItemDetails();
   }
 
-  // Update the _fetchItemDetails method to handle the new image format:
   Future<void> _fetchItemDetails() async {
     setState(() {
       _isLoading = true;
@@ -92,6 +95,112 @@ class _ViewItemScreenState extends State<ViewItemScreen> {
     }
   }
 
+  // Chat initiation method
+
+  Future<void> _initiateChat() async {
+    // Show loading indicator
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const AlertDialog(
+        content: Row(
+          children: [
+            CircularProgressIndicator(),
+            SizedBox(width: 16),
+            Text('Connecting to chat...'),
+          ],
+        ),
+      ),
+    );
+
+    try {
+      final chatService = ChatService();
+
+      // Get current user token
+      final token = await _authService.getToken();
+
+      if (token == null) {
+        // Handle not logged in
+        if (context.mounted) Navigator.pop(context); // Close dialog
+        ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Please log in to chat'))
+        );
+        return;
+      }
+
+      // Get current user ID from token instead of API call
+      final String? currentUserIdNullable = _getUserIdFromToken(token);
+      if (currentUserIdNullable == null) {
+        if (context.mounted) Navigator.pop(context); // Close dialog
+        ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Unable to get user information from token'))
+        );
+        return;
+      }
+
+      // Convert nullable String to non-nullable String - this is guaranteed non-null at this point
+      final String currentUserId = currentUserIdNullable;
+
+      // Handle potential null values with null-aware operators
+      final int itemId = _item?.itemId ?? 0; // Provide default value if null
+      final String receiverId = _item?.reportedBy ?? ""; // Provide default value if null - now guaranteed to be non-nullable String
+
+      // Try to find an existing chat
+      final existingChat = await chatService.checkExistingChat(
+        token,
+        receiverId,
+        itemId, // Pass as int
+      );
+
+      String? chatId;
+
+      if (existingChat != null) {
+        // Use existing chat
+        chatId = existingChat['id'] as String?;
+      } else {
+        // Create a new chat
+        chatId = await chatService.createChat(
+          token,
+          receiverId,
+          itemId, // Pass as int
+        );
+      }
+
+      // Close loading dialog
+      if (context.mounted) Navigator.pop(context);
+
+      if (chatId != null && chatId.isNotEmpty && context.mounted) {
+        // Create a non-nullable String for chatId
+        final String nonNullChatId = chatId; // Explicitly convert to non-nullable
+        // Create a non-nullable String for itemName
+        final String itemName = _item?.itemName ?? "Item";
+
+        // Navigate to chat screen
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => ChatScreen(
+              chatId: nonNullChatId, // Using explicit non-nullable String
+              currentUserId: currentUserId,
+              receiverId: receiverId,
+              itemId: itemId,
+              itemName: itemName,
+            ),
+          ),
+        );
+      } else if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Failed to start chat. Please try again.'))
+        );
+      }
+    } catch (e) {
+      // Close loading dialog
+      if (context.mounted) Navigator.pop(context);
+      ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e'))
+      );
+    }
+  }
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -225,14 +334,9 @@ class _ViewItemScreenState extends State<ViewItemScreen> {
             children: [
               Expanded(
                 child: ElevatedButton.icon(
-                  onPressed: () {
-                    // Implement contact functionality
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Contact initiated')),
-                    );
-                  },
+                  onPressed: _initiateChat, // Use the new chat method
                   icon: const Icon(Icons.email),
-                  label: const Text('Contact'),
+                  label: const Text('Chat'),
                   style: ElevatedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 12),
                   ),
@@ -259,6 +363,28 @@ class _ViewItemScreenState extends State<ViewItemScreen> {
         ],
       ),
     );
+  }
+
+  // Get user ID from JWT token
+  String? _getUserIdFromToken(String token) {
+    try {
+      // JWT tokens are in the format: header.payload.signature
+      final parts = token.split('.');
+      if (parts.length != 3) return null;
+
+      // Decode the payload (middle part)
+      final payload = parts[1];
+      final normalized = base64Url.normalize(payload);
+      final decoded = utf8.decode(base64Url.decode(normalized));
+      final Map<String, dynamic> data = json.decode(decoded);
+
+      // Return the user ID (field name depends on your JWT structure)
+      // Common field names: "sub", "user_id", "id", etc.
+      return data['sub'] ?? data['user_id'] ?? data['id'] ?? data['userId'];
+    } catch (e) {
+      print('Error extracting user ID from token: $e');
+      return null;
+    }
   }
 
   Widget _buildDetailRow(IconData icon, String label, String value) {
