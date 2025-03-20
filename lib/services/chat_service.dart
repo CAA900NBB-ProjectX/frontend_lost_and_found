@@ -91,7 +91,7 @@ class ChatService {
           return chats[0];
         }
       }
-      return null; // No chat exists
+      return null;
     } catch (e) {
       print('Error checking existing chat: $e');
       return null;
@@ -175,6 +175,31 @@ class ChatService {
       return [];
     } catch (e) {
       print('Error getting chat messages: $e');
+      return [];
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> getChatList(String token, int itemId, String itemPostedUserId) async {
+    try {
+      final response = await http.get(
+        Uri.parse('${ApiConfig.getChatListUrl}?token=$token&ItemPostedUser=$itemPostedUserId&itemId=$itemId'),
+        headers: {
+          ...ApiConfig.headers,
+          'Authorization': 'Bearer $token',
+          'ngrok-skip-browser-warning': '69420',
+        },
+      );
+
+      print('Get chat list response status: ${response.statusCode}');
+      print('Get chat list response body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final List<dynamic> chatList = json.decode(response.body);
+        return List<Map<String, dynamic>>.from(chatList);
+      }
+      return [];
+    } catch (e) {
+      print('Error getting chat list: $e');
       return [];
     }
   }
