@@ -11,21 +11,20 @@ import 'dart:html' as html;
 class ItemService {
   final storage = const FlutterSecureStorage();
 
-  // Get token directly from local storage for web
+
   String? _getToken() {
     if (kIsWeb) {
-      // In web, get token directly from localStorage
+
       final token = html.window.localStorage['jwt_token'];
       print('Token from localStorage: ${token != null ? 'Found' : 'Not found'}');
       return token;
     } else {
-      // This won't be called in web but included for completeness
-      // For mobile implementations
+
       return null;
     }
   }
 
-  // Get image by ID - kept for backward compatibility
+
   Future<List<int>?> getItemImage(int imageId) async {
     print('Warning: getItemImage is deprecated. Images are now stored as base64 in the item.');
     try {
@@ -53,12 +52,13 @@ class ItemService {
     }
   }
 
-  // Get headers with auth token
+
   Map<String, String> _getHeaders() {
     final token = _getToken();
     final headers = {
       'Content-Type': 'application/json',
       'Accept': 'application/json',
+      "ngrok-skip-browser-warning": "69420",
     };
 
     if (token != null && token.isNotEmpty) {
@@ -71,24 +71,24 @@ class ItemService {
     return headers;
   }
 
-  // Log response for debugging
+
   void _logResponse(String operation, http.Response response) {
     print('$operation Response status: ${response.statusCode}');
 
-    // Print first 200 chars of body to avoid huge logs
+
     final preview = response.body.length > 200
         ? response.body.substring(0, 200) + '...'
         : response.body;
     print('$operation Response preview: $preview');
 
-    // Check for HTML response
+
     if (response.body.trim().startsWith('<!DOCTYPE') ||
         response.body.trim().startsWith('<html')) {
       print('WARNING: Received HTML response instead of expected JSON');
     }
   }
 
-  // Get all items
+
   Future<List<Item>> getAllItems() async {
     try {
       final headers = _getHeaders();
@@ -120,12 +120,12 @@ class ItemService {
     }
   }
 
-  // Create a new item with images as base64
+
   Future<Item?> createItem(Item item, {List<Uint8List>? imageBytes, List<String>? imageNames}) async {
     try {
       final headers = _getHeaders();
 
-      // If images were provided separately, convert them to base64 and add to the item
+
       if (imageBytes != null && imageBytes.isNotEmpty) {
         final List<ItemImage> images = [];
 
@@ -142,7 +142,7 @@ class ItemService {
           ));
         }
 
-        // Create a new item with the images
+
         final newItem = Item(
           itemId: item.itemId,
           itemName: item.itemName,
@@ -156,7 +156,7 @@ class ItemService {
           images: images,
         );
 
-        // Use the new item with images for the request
+
         item = newItem;
       }
 
@@ -194,7 +194,7 @@ class ItemService {
     }
   }
 
-  // Get item by ID
+
   Future<Item?> getItemById(int itemId) async {
     try {
       final headers = _getHeaders();
@@ -227,21 +227,20 @@ class ItemService {
     }
   }
 
-  // This method will now upload an image for an item by updating the item
-  // with a new image in base64 format
+
   Future<bool> uploadItemImage(int itemId, List<int> imageBytes, String imageName) async {
     try {
-      // First, get the current item
+
       final item = await getItemById(itemId);
       if (item == null) {
         print('Failed to get item for image upload');
         return false;
       }
 
-      // Convert image to base64
+
       final String base64Image = base64Encode(imageBytes);
 
-      // Create a new image object
+
       final newImage = ItemImage(
         description: 'Image of ${item.itemName}',
         image: 'data:image/jpeg;base64,$base64Image',
@@ -293,7 +292,7 @@ class ItemService {
     }
   }
 
-  // Helper method to get minimum of two integers
+
   int min(int a, int b) {
     return a < b ? a : b;
   }
