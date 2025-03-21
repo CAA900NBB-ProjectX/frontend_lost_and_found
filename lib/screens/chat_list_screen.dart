@@ -174,12 +174,12 @@ class _ChatListScreenState extends State<ChatListScreen> {
         final chat = _chats[index];
 
 
-        final isSender = _currentUserId == chat['senderId'].toString();
+        final isSender = _currentUserId == chat['senderUsername'].toString();
         final otherUserId = isSender
             ? chat['receiverUsername'].toString()
-            : chat['senderUserName'].toString();
-        final otherUserName = chat['otherUserName'] ?? 'User $otherUserId';
-
+            : chat['senderUsername'].toString();
+        final otherUserName = chat['otherUserName'] ?? '$otherUserId';
+        print('User  - $chat');
         return ListTile(
           leading: CircleAvatar(
             backgroundColor: Colors.purple.withOpacity(0.2),
