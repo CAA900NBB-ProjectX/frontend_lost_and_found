@@ -6,6 +6,7 @@ import 'dart:typed_data';
 import '../models/item.dart';
 import '../services/item_service.dart';
 import 'dart:convert';
+import '../auth/services/auth_service.dart';
 
 class UploadItemScreen extends StatefulWidget {
   const UploadItemScreen({Key? key}) : super(key: key);
@@ -22,8 +23,11 @@ class _UploadItemScreenState extends State<UploadItemScreen> {
   final _nameController = TextEditingController();
   final _descriptionController = TextEditingController();
   final _locationController = TextEditingController();
-  final _reporterController = TextEditingController();
-  final _contactController = TextEditingController();
+
+  // Authentication service for getting user details
+  final _authService = AuthService();
+  String _reporterUsername = "";
+  String _contactEmail = "";
 
   int _categoryId = 1; // Default category
   DateTime _dateFound = DateTime.now();
@@ -40,6 +44,21 @@ class _UploadItemScreenState extends State<UploadItemScreen> {
   @override
   void initState() {
     super.initState();
+    _loadUserInfo();
+  }
+
+  Future<void> _loadUserInfo() async {
+    try {
+      final currentUser = await _authService.getCurrentUser();
+      if (currentUser != null && mounted) {
+        setState(() {
+          _reporterUsername = currentUser.username;
+          _contactEmail = currentUser.email;
+        });
+      }
+    } catch (e) {
+      print("Error loading user info: $e");
+    }
   }
 
   @override
@@ -47,8 +66,6 @@ class _UploadItemScreenState extends State<UploadItemScreen> {
     _nameController.dispose();
     _descriptionController.dispose();
     _locationController.dispose();
-    _reporterController.dispose();
-    _contactController.dispose();
     super.dispose();
   }
 
@@ -108,6 +125,16 @@ class _UploadItemScreenState extends State<UploadItemScreen> {
     });
 
     try {
+      // Get current user
+      final authUser = await _authService.getCurrentUser();
+      if (authUser == null) {
+        setState(() {
+          _isLoading = false;
+          _errorMessage = 'Please log in to submit an item';
+        });
+        return;
+      }
+
       // Format date for backend
       final formattedDate = _dateFound.toIso8601String();
 
@@ -117,8 +144,8 @@ class _UploadItemScreenState extends State<UploadItemScreen> {
         categoryId: _categoryId,
         locationFound: _locationController.text,
         dateTimeFound: formattedDate,
-        reportedBy: _reporterController.text,
-        contactInfo: _contactController.text,
+        reportedBy: authUser.username, // Use actual user ID from auth system
+        contactInfo: authUser.email,    // Use actual email from auth system
         status: _status,
       );
 
@@ -283,6 +310,10 @@ class _UploadItemScreenState extends State<UploadItemScreen> {
                           onPressed: _pickImages,
                           icon: const Icon(Icons.photo_library),
                           label: const Text('Select Images'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF8BC34A), // Green accent from login page
+                            foregroundColor: Colors.white,
+                          ),
                         ),
                       ),
                       if (_imageBytes.isNotEmpty) ...[
@@ -400,34 +431,49 @@ class _UploadItemScreenState extends State<UploadItemScreen> {
               ),
               const SizedBox(height: 16),
 
-              TextFormField(
-                controller: _reporterController,
-                decoration: const InputDecoration(
-                  labelText: 'Your Name*',
-                  border: OutlineInputBorder(),
+              // Display user info (non-editable)
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF2C2C2C),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.grey.shade700),
                 ),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Please enter your name';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 16),
-
-              TextFormField(
-                controller: _contactController,
-                decoration: const InputDecoration(
-                  labelText: 'Contact Information*',
-                  border: OutlineInputBorder(),
-                  hintText: 'Email or phone number',
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      "Your Information",
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                        color: Colors.white,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        const Icon(Icons.person, color: Color(0xFF8BC34A), size: 18),
+                        const SizedBox(width: 8),
+                        Text(
+                          "Username: $_reporterUsername",
+                          style: const TextStyle(color: Colors.white),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        const Icon(Icons.email, color: Color(0xFF8BC34A), size: 18),
+                        const SizedBox(width: 8),
+                        Text(
+                          "Contact: $_contactEmail",
+                          style: const TextStyle(color: Colors.white),
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Please enter your contact information';
-                  }
-                  return null;
-                },
               ),
               const SizedBox(height: 24),
 
@@ -435,9 +481,11 @@ class _UploadItemScreenState extends State<UploadItemScreen> {
                 onPressed: _isLoading ? null : _submitItem,
                 style: ElevatedButton.styleFrom(
                   padding: const EdgeInsets.symmetric(vertical: 16),
+                  backgroundColor: const Color(0xFF8BC34A), // Green accent from login page
+                  foregroundColor: Colors.white,
                 ),
                 child: _isLoading
-                    ? const CircularProgressIndicator()
+                    ? const CircularProgressIndicator(color: Colors.white)
                     : Text(_status == "FOUND" ? 'SUBMIT FOUND ITEM' : 'SUBMIT LOST ITEM'),
               ),
             ],
