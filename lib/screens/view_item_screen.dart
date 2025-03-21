@@ -48,7 +48,7 @@ class _ViewItemScreenState extends State<ViewItemScreen> {
             _isLoading = false;
           });
 
-
+          // Load images if available
           if (item.images != null && item.images!.isNotEmpty) {
             _loadImagesFromBase64(item.images!);
           }
@@ -99,21 +99,30 @@ class _ViewItemScreenState extends State<ViewItemScreen> {
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) => const AlertDialog(
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF2C2C2C),
         content: Row(
           children: [
-            CircularProgressIndicator(),
-            SizedBox(width: 16),
-            Text('Connecting to chat...'),
+            const CircularProgressIndicator(valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF8BC34A))),
+            const SizedBox(width: 16),
+            const Text('Connecting to chat...', style: TextStyle(color: Colors.white)),
           ],
         ),
       ),
     );
 
     try {
-      final chatService = ChatService();
-      final token = await _authService.getToken();
+      // Get current user first
+      final currentUser = await _authService.getCurrentUser();
+      if (currentUser == null) {
+        if (context.mounted) Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Please log in to chat'))
+        );
+        return;
+      }
 
+      final token = await _authService.getToken();
       if (token == null) {
         if (context.mounted) Navigator.pop(context);
         ScaffoldMessenger.of(context).showSnackBar(
@@ -122,25 +131,20 @@ class _ViewItemScreenState extends State<ViewItemScreen> {
         return;
       }
 
-
-      final String? currentUsername = extractUsernameFromToken(token);
-      if (currentUsername == null) {
-        if (context.mounted) Navigator.pop(context);
-        ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Unable to get user information from token'))
-        );
-        return;
-      }
-
+      final String currentUsername = currentUser.username;
       final int itemId = _item?.itemId ?? 0;
       final String reportedBy = _item?.reportedBy ?? "";
 
+      print("Current username: $currentUsername");
+      print("Item reporter: $reportedBy");
+      print("Item ID: $itemId");
 
+      // If the current user is the item reporter, show the chat list
       if (currentUsername == reportedBy) {
         // Close loading dialog
         if (context.mounted) Navigator.pop(context);
 
-        //Bro  if the current user is the reporter, show the chat list
+        // Navigate to chat list
         if (context.mounted) {
           Navigator.push(
             context,
@@ -156,7 +160,10 @@ class _ViewItemScreenState extends State<ViewItemScreen> {
         return;
       }
 
+      final chatService = ChatService();
 
+      // Check for existing chat
+      // Check for existing chat
       final existingChat = await chatService.checkExistingChat(
         token,
         reportedBy,
@@ -164,15 +171,34 @@ class _ViewItemScreenState extends State<ViewItemScreen> {
       );
 
       String? chatId;
-
       if (existingChat != null) {
-        chatId = existingChat['id'] as String?;
+        // Handle different response formats
+        if (existingChat is Map) {
+          // If it's a map, extract the id as a string
+          chatId = existingChat['id']?.toString();
+        } else if (existingChat is List && existingChat.isNotEmpty) {
+          // If it's a list with content, get the first item's id
+          chatId = existingChat[0]['id']?.toString();
+        } else if (existingChat is int && existingChat == 0) {
+          // If it's 0, there's no existing chat
+          chatId = null;
+        } else {
+          // For any other format (like String), convert to string
+          chatId = existingChat.toString();
+        }
+        print("Existing chat ID: $chatId");
       } else {
+        chatId = null;
+      }
+
+// If no existing chat was found, create one
+      if (chatId == null) {
         chatId = await chatService.createChat(
           token,
           reportedBy,
           itemId,
         );
+        print("New chat ID: $chatId");
       }
 
       if (context.mounted) Navigator.pop(context);
@@ -190,7 +216,7 @@ class _ViewItemScreenState extends State<ViewItemScreen> {
               receiverUsername: reportedBy,
               itemId: itemId,
               itemName: itemName,
-              receiver: reportedBy, // need to check n]bro
+              receiver: reportedBy,
             ),
           ),
         );
@@ -200,6 +226,7 @@ class _ViewItemScreenState extends State<ViewItemScreen> {
         );
       }
     } catch (e) {
+      print("Error initiating chat: $e");
       if (context.mounted) Navigator.pop(context);
       ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Error: $e'))
@@ -207,37 +234,19 @@ class _ViewItemScreenState extends State<ViewItemScreen> {
     }
   }
 
-  String? extractUsernameFromToken(String token) {
-    try {
-      final parts = token.split('.');
-      if (parts.length != 3) return null;
-
-      final payload = parts[1];
-      final normalized = base64Url.normalize(payload);
-      final decoded = utf8.decode(base64Url.decode(normalized));
-      final Map<String, dynamic> data = json.decode(decoded);
-
-
-      return data['username'] ??
-          data['preferred_username'] ??
-          data['email'] ??
-          data['sub'] ??
-          data['userId'] ??
-          data['name'];
-    } catch (e) {
-      print('Error extracting username from token: $e');
-      return null;
-    }
-  }
+  // No longer needed - we get the username from the user object directly
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: const Color(0xFF1A1A1A), // Black background from login page
       appBar: AppBar(
         title: Text(_item?.itemName ?? 'Item Details'),
+        backgroundColor: Colors.black,
+        foregroundColor: Colors.white,
       ),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
+          ? const Center(child: CircularProgressIndicator(color: Color(0xFF8BC34A)))
           : _errorMessage != null
           ? Center(child: Text(_errorMessage!, style: const TextStyle(color: Colors.red)))
           : _buildItemDetails(),
@@ -246,7 +255,7 @@ class _ViewItemScreenState extends State<ViewItemScreen> {
 
   Widget _buildItemDetails() {
     if (_item == null) {
-      return const Center(child: Text('No item data available'));
+      return const Center(child: Text('No item data available', style: TextStyle(color: Colors.white)));
     }
 
     return SingleChildScrollView(
@@ -254,7 +263,7 @@ class _ViewItemScreenState extends State<ViewItemScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-
+          // Image or placeholder
           if (_images.isNotEmpty)
             SizedBox(
               height: 250,
@@ -296,6 +305,7 @@ class _ViewItemScreenState extends State<ViewItemScreen> {
           // Item details
           Card(
             elevation: 4,
+            color: const Color(0xFF2C2C2C), // Dark gray from login page
             child: Padding(
               padding: const EdgeInsets.all(16.0),
               child: Column(
@@ -303,16 +313,20 @@ class _ViewItemScreenState extends State<ViewItemScreen> {
                 children: [
                   Text(
                     _item!.itemName,
-                    style: Theme.of(context).textTheme.headlineSmall,
+                    style: const TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
                   ),
                   Chip(
                     label: Text(
                       _item!.status,
                       style: const TextStyle(color: Colors.white),
                     ),
-                    backgroundColor: _item!.status == "FOUND" ? Colors.green : Colors.orange,
+                    backgroundColor: _item!.status == "FOUND" ? const Color(0xFF8BC34A) : Colors.orange,
                   ),
-                  const Divider(height: 24),
+                  const Divider(height: 24, color: Colors.grey),
 
                   _buildDetailRow(Icons.category, 'Category', _item!.getCategoryName()),
                   _buildDetailRow(Icons.description, 'Description', _item!.description),
@@ -328,23 +342,24 @@ class _ViewItemScreenState extends State<ViewItemScreen> {
                     style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
+                      color: Colors.white,
                     ),
                   ),
                   const SizedBox(height: 10),
                   Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: Colors.grey[100],
+                      color: Colors.grey[800],
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Row(
                       children: [
-                        const Icon(Icons.contact_mail),
+                        const Icon(Icons.contact_mail, color: Color(0xFF8BC34A)),
                         const SizedBox(width: 12),
                         Expanded(
                           child: Text(
                             _item!.contactInfo,
-                            style: const TextStyle(fontSize: 16),
+                            style: const TextStyle(fontSize: 16, color: Colors.white),
                           ),
                         ),
                       ],
@@ -357,17 +372,19 @@ class _ViewItemScreenState extends State<ViewItemScreen> {
 
           const SizedBox(height: 20),
 
-
+          // Action buttons
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
               Expanded(
                 child: ElevatedButton.icon(
                   onPressed: _initiateChat,
-                  icon: const Icon(Icons.email),
+                  icon: const Icon(Icons.chat),
                   label: const Text('Chat'),
                   style: ElevatedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 12),
+                    backgroundColor: const Color(0xFF8BC34A), // Green accent from login page
+                    foregroundColor: Colors.white,
                   ),
                 ),
               ),
@@ -375,15 +392,15 @@ class _ViewItemScreenState extends State<ViewItemScreen> {
               Expanded(
                 child: OutlinedButton.icon(
                   onPressed: () {
-
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(content: Text('Sharing item details')),
                     );
                   },
-                  icon: const Icon(Icons.share),
-                  label: const Text('Share'),
+                  icon: const Icon(Icons.share, color: Color(0xFF8BC34A)),
+                  label: const Text('Share', style: TextStyle(color: Color(0xFF8BC34A))),
                   style: OutlinedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 12),
+                    side: const BorderSide(color: Color(0xFF8BC34A)),
                   ),
                 ),
               ),
@@ -400,7 +417,7 @@ class _ViewItemScreenState extends State<ViewItemScreen> {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, size: 20, color: Colors.grey[700]),
+          Icon(icon, size: 20, color: const Color(0xFF8BC34A)),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
@@ -410,13 +427,13 @@ class _ViewItemScreenState extends State<ViewItemScreen> {
                   label,
                   style: TextStyle(
                     fontSize: 14,
-                    color: Colors.grey[600],
+                    color: Colors.grey[400],
                   ),
                 ),
                 const SizedBox(height: 4),
                 Text(
                   value,
-                  style: const TextStyle(fontSize: 16),
+                  style: const TextStyle(fontSize: 16, color: Colors.white),
                 ),
               ],
             ),
