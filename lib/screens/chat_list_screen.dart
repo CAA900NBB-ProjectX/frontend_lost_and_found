@@ -176,8 +176,8 @@ class _ChatListScreenState extends State<ChatListScreen> {
 
         final isSender = _currentUserId == chat['senderId'].toString();
         final otherUserId = isSender
-            ? chat['receiverId'].toString()
-            : chat['senderId'].toString();
+            ? chat['receiverUsername'].toString()
+            : chat['senderUserName'].toString();
         final otherUserName = chat['otherUserName'] ?? 'User $otherUserId';
 
         return ListTile(
