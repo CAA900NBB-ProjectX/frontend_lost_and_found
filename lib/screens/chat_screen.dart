@@ -170,7 +170,7 @@ class _ChatScreenState extends State<ChatScreen> {
       final success = await _chatService.sendMessage(
         content: messageText,
         senderUsername: widget.currentUsername,
-        receiverUsername: widget.receiverUsername,
+        receiverUsername: widget.receiver,
         itemId: widget.itemId,
         chatId: widget.chatId,
         token: token,
