@@ -2,7 +2,7 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 
 class ApiConfig {
   static String get baseUrl {
-    return 'https://ec7d-74-12-27-5.ngrok-free.app';
+    return 'https://dce8-142-204-17-60.ngrok-free.app';
   }
   static String get wsUrl {
     if (baseUrl.startsWith('https://')) {
