@@ -121,6 +121,39 @@ class ItemService {
   }
 
 
+  Future<Item?> getItemById(int itemId) async {
+    try {
+      final headers = _getHeaders();
+      final url = '${ApiConfig.getItemByIdUrl}/$itemId';
+
+      print('Getting item with URL: $url');
+
+      final response = await http.get(
+        Uri.parse(url),
+        headers: headers,
+      );
+
+      _logResponse('Get Item By ID', response);
+
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        try {
+          final responseJson = jsonDecode(response.body);
+          return Item.fromJson(responseJson);
+        } catch (e) {
+          print('Error parsing item response: $e');
+          return null;
+        }
+      } else {
+        print('Failed to get item: ${response.statusCode}');
+        return null;
+      }
+    } catch (e) {
+      print('Error getting item: $e');
+      return null;
+    }
+  }
+
+
   Future<Item?> createItem(Item item, {List<Uint8List>? imageBytes, List<String>? imageNames}) async {
     try {
       final headers = _getHeaders();
@@ -195,38 +228,107 @@ class ItemService {
   }
 
 
-  Future<Item?> getItemById(int itemId) async {
+  Future<Item?> updateItem(int itemId, Item updatedItem) async {
     try {
       final headers = _getHeaders();
-      final url = '${ApiConfig.getItemByIdUrl}/$itemId';
+      final jsonData = updatedItem.toJson();
+      final jsonBody = jsonEncode(jsonData);
+      final url = '${ApiConfig.updateItemUrl}/$itemId';
 
-      print('Getting item with URL: $url');
+      print('Updating item at URL: $url');
+      print('With headers: $headers');
+      print('Sending JSON: $jsonBody');
 
-      final response = await http.get(
+      final response = await http.put(
         Uri.parse(url),
         headers: headers,
+        body: jsonBody,
       );
 
-      _logResponse('Get Item By ID', response);
+      _logResponse('Update Item', response);
 
       if (response.statusCode >= 200 && response.statusCode < 300) {
         try {
           final responseJson = jsonDecode(response.body);
           return Item.fromJson(responseJson);
         } catch (e) {
-          print('Error parsing item response: $e');
+          print('Error parsing response: $e');
           return null;
         }
       } else {
-        print('Failed to get item: ${response.statusCode}');
+        print('Failed to update item: ${response.statusCode}');
         return null;
       }
     } catch (e) {
-      print('Error getting item: $e');
+      print('Error updating item: $e');
       return null;
     }
   }
 
+  Future<bool> deleteItem(int itemId) async {
+    try {
+      final headers = _getHeaders();
+      final url = '${ApiConfig.deleteItemUrl}/$itemId';
+
+      print('Deleting item with URL: $url');
+
+      final response = await http.delete(
+        Uri.parse(url),
+        headers: headers,
+      );
+
+      _logResponse('Delete Item', response);
+
+      return response.statusCode >= 200 && response.statusCode < 300;
+    } catch (e) {
+      print('Error deleting item: $e');
+      return false;
+    }
+  }
+
+  Future<List<Item>> searchItems(String? itemName, String? locationFound, String? description) async {
+    try {
+      final headers = _getHeaders();
+      final queryParams = <String, String>{};
+
+      if (itemName != null && itemName.isNotEmpty) {
+        queryParams['itemName'] = itemName;
+      }
+      if (locationFound != null && locationFound.isNotEmpty) {
+        queryParams['locationFound'] = locationFound;
+      }
+      if (description != null && description.isNotEmpty) {
+        queryParams['description'] = description;
+      }
+
+      final uri = Uri.parse(ApiConfig.searchItemsUrl).replace(queryParameters: queryParams);
+
+      print('Searching items with URL: $uri');
+
+      final response = await http.get(
+        uri,
+        headers: headers,
+      );
+
+      _logResponse('Search Items', response);
+
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        try {
+          final List<dynamic> itemsJson = jsonDecode(response.body);
+          return itemsJson.map((json) => Item.fromJson(json)).toList();
+        } catch (e) {
+          print('JSON parsing error: $e');
+          return [];
+        }
+      } else {
+        print('Failed to search items: ${response.statusCode}');
+        return [];
+      }
+    } catch (e) {
+      print('Error searching items: $e');
+      return [];
+    }
+  }
 
   Future<bool> uploadItemImage(int itemId, List<int> imageBytes, String imageName) async {
     try {
