@@ -46,6 +46,7 @@ class _AppNavigationDrawerState extends State<AppNavigationDrawer> {
   @override
   Widget build(BuildContext context) {
     return Drawer(
+      backgroundColor: const Color(0xFF1A1A1A), // Dark background
       child: Column(
         children: [
           _buildHeader(),
@@ -62,10 +63,28 @@ class _AppNavigationDrawerState extends State<AppNavigationDrawer> {
                 ),
                 _buildNavItem(
                   context,
-                  title: 'Report Found Item',
-                  icon: Icons.add_circle,
+                  title: 'Search Items',
+                  icon: Icons.search,
+                  route: '/search_items',
+                  isSelected: widget.currentRoute == '/search_items',
+                ),
+                _buildNavItem(
+                  context,
+                  title: 'Report Lost Item',
+                  icon: Icons.help_outline,
                   route: '/upload_item',
-                  isSelected: widget.currentRoute == '/upload_item',
+                  arguments: {'status': 'LOST'},
+                  isSelected: widget.currentRoute == '/upload_item' &&
+                      (ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?)?.containsValue('LOST') == true,
+                ),
+                _buildNavItem(
+                  context,
+                  title: 'Report Found Item',
+                  icon: Icons.check_circle_outline,
+                  route: '/upload_item',
+                  arguments: {'status': 'FOUND'},
+                  isSelected: widget.currentRoute == '/upload_item' &&
+                      (ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?)?.containsValue('FOUND') == true,
                 ),
                 _buildNavItem(
                   context,
@@ -74,7 +93,7 @@ class _AppNavigationDrawerState extends State<AppNavigationDrawer> {
                   route: '/profile',
                   isSelected: widget.currentRoute == '/profile',
                 ),
-                const Divider(),
+                const Divider(color: Color(0xFF3A3A3A)),
                 _buildNavItem(
                   context,
                   title: 'About',
@@ -87,10 +106,10 @@ class _AppNavigationDrawerState extends State<AppNavigationDrawer> {
               ],
             ),
           ),
-          const Divider(),
+          const Divider(color: Color(0xFF3A3A3A)),
           ListTile(
             leading: const Icon(Icons.logout, color: Colors.red),
-            title: const Text('Logout'),
+            title: const Text('Logout', style: TextStyle(color: Colors.white)),
             onTap: () async {
               await _authService.logout();
               if (context.mounted) {
@@ -106,12 +125,24 @@ class _AppNavigationDrawerState extends State<AppNavigationDrawer> {
 
   Widget _buildHeader() {
     return UserAccountsDrawerHeader(
+      decoration: const BoxDecoration(
+        color: Color(0xFF8BC34A), // Green accent color
+      ),
       accountName: _isLoading
           ? const Text('Loading...')
-          : Text(_currentUser?.username ?? 'User'),
+          : Text(
+        _currentUser?.username ?? 'User',
+        style: const TextStyle(
+          fontWeight: FontWeight.bold,
+          color: Colors.white,
+        ),
+      ),
       accountEmail: _isLoading
           ? const Text('Loading...')
-          : Text(_currentUser?.email ?? 'user@example.com'),
+          : Text(
+        _currentUser?.email ?? 'user@example.com',
+        style: const TextStyle(color: Colors.white),
+      ),
       currentAccountPicture: CircleAvatar(
         backgroundColor: Colors.white,
         child: Text(
@@ -123,12 +154,9 @@ class _AppNavigationDrawerState extends State<AppNavigationDrawer> {
           style: const TextStyle(
             fontSize: 30,
             fontWeight: FontWeight.bold,
-            color: Colors.purple,
+            color: Color(0xFF8BC34A),
           ),
         ),
-      ),
-      decoration: BoxDecoration(
-        color: Theme.of(context).primaryColor,
       ),
     );
   }
@@ -138,26 +166,31 @@ class _AppNavigationDrawerState extends State<AppNavigationDrawer> {
         required String title,
         required IconData icon,
         String? route,
+        Map<String, dynamic>? arguments,
         bool isSelected = false,
         VoidCallback? onTap,
       }) {
     return ListTile(
       leading: Icon(
         icon,
-        color: isSelected ? Theme.of(context).primaryColor : null,
+        color: isSelected ? const Color(0xFF8BC34A) : Colors.white70,
       ),
       title: Text(
         title,
         style: TextStyle(
           fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-          color: isSelected ? Theme.of(context).primaryColor : null,
+          color: isSelected ? const Color(0xFF8BC34A) : Colors.white,
         ),
       ),
       selected: isSelected,
       onTap: onTap ?? () {
         Navigator.pop(context);
-        if (route != null && route != widget.currentRoute) {
-          Navigator.pushReplacementNamed(context, route);
+        if (route != null && (route != widget.currentRoute || arguments != null)) {
+          Navigator.pushReplacementNamed(
+            context,
+            route,
+            arguments: arguments,
+          );
         }
       },
     );
@@ -168,33 +201,55 @@ class _AppNavigationDrawerState extends State<AppNavigationDrawer> {
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: const Text('About Found It!'),
-          content: const SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  'Found It! is a lost and found app that helps people recover their lost items.',
+          backgroundColor: const Color(0xFF2C2C2C),
+          title: const Text(
+            'About Found It!',
+            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Found It! is a lost and found app that helps people recover their lost items.',
+                style: TextStyle(color: Colors.white70),
+              ),
+              const SizedBox(height: 12),
+              const Text(
+                'Version: 1.0.0',
+                style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 20),
+              const Text(
+                '© 2025 Seneca Polytechnic\nProject X Team',
+                style: TextStyle(color: Colors.white70, fontSize: 12),
+              ),
+              const SizedBox(height: 16),
+              Center(
+                child: Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF8BC34A).withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Icon(
+                    Icons.search,
+                    color: Color(0xFF8BC34A),
+                    size: 48,
+                  ),
                 ),
-                SizedBox(height: 12),
-                Text(
-                  'Version: 1.0.0',
-                  style: TextStyle(fontWeight: FontWeight.bold),
-                ),
-                SizedBox(height: 20),
-                Text(
-                  '© 2025 Seneca Polytechnic\nProject X Team',
-                ),
-              ],
-            ),
+              ),
+            ],
           ),
           actions: [
             TextButton(
               onPressed: () {
                 Navigator.of(context).pop();
               },
-              child: const Text('Close'),
+              child: const Text(
+                'Close',
+                style: TextStyle(color: Color(0xFF8BC34A)),
+              ),
             ),
           ],
         );
