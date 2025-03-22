@@ -1,6 +1,7 @@
+// lib/widgets/navigation_drawer.dart
 import 'package:flutter/material.dart';
 import '../auth/services/auth_service.dart';
-import '../auth/models/user.dart';
+import '../services/user_service.dart';
 
 class AppNavigationDrawer extends StatefulWidget {
   final String currentRoute;
@@ -16,6 +17,7 @@ class AppNavigationDrawer extends StatefulWidget {
 
 class _AppNavigationDrawerState extends State<AppNavigationDrawer> {
   final AuthService _authService = AuthService();
+  final UserService _userService = UserService();
   User? _currentUser;
   bool _isLoading = true;
 
@@ -27,7 +29,7 @@ class _AppNavigationDrawerState extends State<AppNavigationDrawer> {
 
   Future<void> _loadUserInfo() async {
     try {
-      final user = await _authService.getCurrentUser();
+      final user = await _userService.getCurrentUser();
       if (mounted) {
         setState(() {
           _currentUser = user;

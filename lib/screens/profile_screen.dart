@@ -1,6 +1,8 @@
 // lib/screens/profile_screen.dart
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import '../auth/services/auth_service.dart';
+import '../auth/models/user.dart' as AuthUser;
 import '../services/user_service.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -11,11 +13,12 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
-  final AuthService _authService = AuthService();
   final UserService _userService = UserService();
+  final AuthService _authService = AuthService();
   bool _isLoading = true;
   User? _currentUser;
   String? _errorMessage;
+  String? _debugInfo;  // For development only - remove in production
 
   @override
   void initState() {
@@ -27,35 +30,78 @@ class _ProfileScreenState extends State<ProfileScreen> {
     setState(() {
       _isLoading = true;
       _errorMessage = null;
+      _debugInfo = null;
     });
 
     try {
-      // First try to get user ID from token
-      final authUser = await _authService.getCurrentUser();
+      // First check for token
+      final token = await _authService.getToken();
+      if (token == null) {
+        setState(() {
+          _isLoading = false;
+          _errorMessage = 'You must be logged in to view your profile';
+        });
+        return;
+      }
 
-      if (authUser != null) {
-        // Use proper user API to get full user details
-        final user = await _userService.getUserByEmail(authUser.email);
+      // Try to get user info from UserService
+      User? user = await _userService.getCurrentUser();
+      _debugInfo = 'Tried UserService.getCurrentUser()';
 
+      // If that fails, try to create a user from token data
+      if (user == null) {
+        final parts = token.split('.');
+        if (parts.length == 3) {
+          try {
+            final payload = parts[1];
+            final normalized = base64Url.normalize(payload);
+            final decoded = utf8.decode(base64Url.decode(normalized));
+            final data = json.decode(decoded);
+
+            _debugInfo = '$_debugInfo → Created minimal user from token data';
+
+            // Extract a username and email-like value from token
+            final username = data['preferred_username'] ??
+                data['nickname'] ??
+                data['name'] ??
+                data['sub'] ??
+                'User';
+
+            final email = data['email'] ??
+                data['mail'] ??
+                (data['sub'] != null && data['sub'].toString().contains('@') ? data['sub'] : null) ??
+                '$username@example.com';
+
+            // Create a minimal user object
+            user = User(
+              username: username.toString(),
+              email: email.toString(),
+            );
+          } catch (e) {
+            _debugInfo = '$_debugInfo → Failed to create user from token: $e';
+          }
+        }
+      }
+
+      if (mounted) {
         setState(() {
           _currentUser = user;
           _isLoading = false;
-        });
-      } else {
-        setState(() {
-          _errorMessage = 'Could not retrieve user information';
-          _isLoading = false;
+          if (user == null) {
+            _errorMessage = 'Could not retrieve user profile';
+          }
         });
       }
     } catch (e) {
-      setState(() {
-        _errorMessage = 'Failed to load profile: $e';
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _errorMessage = 'Failed to load profile: $e';
+          _isLoading = false;
+        });
+      }
     }
   }
 
-  // Build method with UI showing all user details including address fields, etc.
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -77,9 +123,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
               style: const TextStyle(color: Colors.red),
               textAlign: TextAlign.center,
             ),
+            if (_debugInfo != null) ...[
+              const SizedBox(height: 8),
+              Text(
+                'Debug info: $_debugInfo',
+                style: TextStyle(color: Colors.grey[600], fontSize: 12),
+                textAlign: TextAlign.center,
+              ),
+            ],
             const SizedBox(height: 16),
             ElevatedButton(
               onPressed: _loadUserProfile,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF8BC34A),
+              ),
               child: const Text('Retry'),
             ),
           ],
@@ -101,6 +158,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
+          // Profile avatar
           CircleAvatar(
             radius: 50,
             backgroundColor: const Color(0xFF8BC34A),
@@ -114,6 +172,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
           ),
           const SizedBox(height: 16),
+
+          // User name and email
           Text(
             _currentUser!.username,
             style: const TextStyle(
@@ -129,7 +189,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
               color: Colors.grey[400],
             ),
           ),
+          if (_debugInfo != null) ...[
+            const SizedBox(height: 8),
+            Text(
+              'Debug info: $_debugInfo',
+              style: TextStyle(color: Colors.grey[600], fontSize: 10),
+              textAlign: TextAlign.center,
+            ),
+          ],
           const SizedBox(height: 32),
+
+          // Account information card
           Card(
             color: const Color(0xFF2C2C2C),
             child: Padding(
@@ -159,6 +229,24 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     _buildInfoRow('Phone', _currentUser!.phoneno.toString()),
                 ],
               ),
+            ),
+          ),
+          const SizedBox(height: 20),
+
+          // Logout button
+          ElevatedButton.icon(
+            icon: const Icon(Icons.logout),
+            label: const Text('Logout'),
+            onPressed: () async {
+              await _authService.logout();
+              if (mounted) {
+                Navigator.pushReplacementNamed(context, '/login');
+              }
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 20),
             ),
           ),
         ],

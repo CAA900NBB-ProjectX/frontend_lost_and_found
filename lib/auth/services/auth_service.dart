@@ -1,6 +1,6 @@
+// lib/auth/services/auth_service.dart
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:universal_platform/universal_platform.dart';
@@ -126,25 +126,59 @@ class AuthService {
     }
   }
 
-  Future<User?> getCurrentUser() async {
-    final token = await getToken();
-    if (token == null) return null;
-
+  // Helper method to decode the JWT token for use by other services
+  Map<String, dynamic> decodeToken(String token) {
     try {
-      final response = await http.get(
-        Uri.parse(ApiConfig.userMeUrl),
-        headers: {
-          ..._headers,
-          'Authorization': 'Bearer $token'
-        },
-      );
+      final parts = token.split('.');
+      if (parts.length != 3) return {};
 
-      if (response.statusCode >= 200 && response.statusCode < 300) {
-        return User.fromJson(json.decode(response.body));
-      }
-      return null;
+      final payload = parts[1];
+      final normalized = base64Url.normalize(payload);
+      final decoded = utf8.decode(base64Url.decode(normalized));
+      return json.decode(decoded);
     } catch (e) {
-      return null;
+      print('Error decoding token: $e');
+      return {};
     }
+  }
+
+  // Helper method to extract email from token data
+  String? extractEmailFromToken(String token) {
+    final tokenData = decodeToken(token);
+
+    // Try common JWT claim fields that might contain email
+    final possibleEmailFields = ['email', 'mail', 'user_email', 'sub'];
+
+    for (final field in possibleEmailFields) {
+      if (tokenData.containsKey(field)) {
+        final value = tokenData[field];
+        if (value is String && value.contains('@')) {
+          return value; // Found a valid email
+        }
+      }
+    }
+
+    // If no email found in common fields, try to scan all fields for an email-like value
+    for (final entry in tokenData.entries) {
+      final value = entry.value;
+      if (value is String && value.contains('@')) {
+        return value; // Found something that looks like an email
+      }
+    }
+
+    return null;
+  }
+
+  // Get a username from the token
+  String? getUsernameFromToken(String token) {
+    final tokenData = decodeToken(token);
+
+    // Try common fields that might contain a username
+    return tokenData['preferred_username'] ??
+        tokenData['nickname'] ??
+        tokenData['name'] ??
+        tokenData['sub'] ??
+        tokenData['userId'] ??
+        null;
   }
 }

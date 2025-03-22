@@ -1,3 +1,4 @@
+// lib/screens/upload_item_screen.dart
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:image_picker/image_picker.dart';
@@ -7,6 +8,7 @@ import '../models/item.dart';
 import '../services/item_service.dart';
 import 'dart:convert';
 import '../auth/services/auth_service.dart';
+import '../services/user_service.dart';
 
 class UploadItemScreen extends StatefulWidget {
   const UploadItemScreen({Key? key}) : super(key: key);
@@ -18,6 +20,7 @@ class UploadItemScreen extends StatefulWidget {
 class _UploadItemScreenState extends State<UploadItemScreen> {
   final _formKey = GlobalKey<FormState>();
   final _itemService = ItemService();
+  final _userService = UserService(); // Added UserService
 
   // Form controllers
   final _nameController = TextEditingController();
@@ -49,12 +52,35 @@ class _UploadItemScreenState extends State<UploadItemScreen> {
 
   Future<void> _loadUserInfo() async {
     try {
-      final currentUser = await _authService.getCurrentUser();
+      // Get the current user from UserService instead of AuthService
+      final currentUser = await _userService.getCurrentUser();
       if (currentUser != null && mounted) {
         setState(() {
           _reporterUsername = currentUser.username;
           _contactEmail = currentUser.email;
         });
+      } else {
+        // If UserService fails, try to extract info from token directly
+        final token = await _authService.getToken();
+        if (token != null) {
+          final tokenData = _authService.decodeToken(token);
+          final username = tokenData['preferred_username'] ??
+              tokenData['nickname'] ??
+              tokenData['name'] ??
+              tokenData['sub'] ??
+              'User';
+
+          final email = tokenData['email'] ??
+              tokenData['mail'] ??
+              (tokenData['sub'] != null && tokenData['sub'].toString().contains('@') ?
+              tokenData['sub'] : null) ??
+              '$username@example.com';
+
+          setState(() {
+            _reporterUsername = username.toString();
+            _contactEmail = email.toString();
+          });
+        }
       }
     } catch (e) {
       print("Error loading user info: $e");
@@ -125,9 +151,9 @@ class _UploadItemScreenState extends State<UploadItemScreen> {
     });
 
     try {
-      // Get current user
-      final authUser = await _authService.getCurrentUser();
-      if (authUser == null) {
+      // Get token to check if user is authenticated
+      final token = await _authService.getToken();
+      if (token == null) {
         setState(() {
           _isLoading = false;
           _errorMessage = 'Please log in to submit an item';
@@ -138,14 +164,15 @@ class _UploadItemScreenState extends State<UploadItemScreen> {
       // Format date for backend
       final formattedDate = _dateFound.toIso8601String();
 
+      // Use the already loaded user info
       final newItem = Item(
         itemName: _nameController.text,
         description: _descriptionController.text,
         categoryId: _categoryId,
         locationFound: _locationController.text,
         dateTimeFound: formattedDate,
-        reportedBy: authUser.username, // Use actual user ID from auth system
-        contactInfo: authUser.email,    // Use actual email from auth system
+        reportedBy: _reporterUsername, // Use stored username
+        contactInfo: _contactEmail,    // Use stored email
         status: _status,
       );
 

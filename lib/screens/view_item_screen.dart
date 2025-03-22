@@ -1,3 +1,4 @@
+// lib/screens/view_item_screen.dart
 import 'package:flutter/material.dart';
 import 'dart:typed_data';
 import 'package:intl/intl.dart';
@@ -6,6 +7,7 @@ import '../services/item_service.dart';
 import 'dart:convert';
 import '../auth/services/auth_service.dart';
 import '../services/chat_service.dart';
+import '../services/user_service.dart';
 import 'chat_screen.dart';
 import 'chat_list_screen.dart';
 
@@ -21,6 +23,7 @@ class ViewItemScreen extends StatefulWidget {
 class _ViewItemScreenState extends State<ViewItemScreen> {
   final ItemService _itemService = ItemService();
   final AuthService _authService = AuthService();
+  final UserService _userService = UserService(); // Added UserService
   bool _isLoading = true;
   String? _errorMessage;
   Item? _item;
@@ -112,16 +115,7 @@ class _ViewItemScreenState extends State<ViewItemScreen> {
     );
 
     try {
-      // Get current user first
-      final currentUser = await _authService.getCurrentUser();
-      if (currentUser == null) {
-        if (context.mounted) Navigator.pop(context);
-        ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Please log in to chat'))
-        );
-        return;
-      }
-
+      // Get token first to check authentication
       final token = await _authService.getToken();
       if (token == null) {
         if (context.mounted) Navigator.pop(context);
@@ -131,7 +125,22 @@ class _ViewItemScreenState extends State<ViewItemScreen> {
         return;
       }
 
-      final String currentUsername = currentUser.username;
+      // Use UserService to get current user info
+      final currentUser = await _userService.getCurrentUser();
+
+      // If UserService fails, try to get username from token directly
+      String currentUsername;
+      if (currentUser != null) {
+        currentUsername = currentUser.username;
+      } else {
+        // Fallback to token data
+        final tokenData = _authService.decodeToken(token);
+        currentUsername = tokenData['preferred_username'] ??
+            tokenData['name'] ??
+            tokenData['sub'] ??
+            'unknown_user';
+      }
+
       final int itemId = _item?.itemId ?? 0;
       final String reportedBy = _item?.reportedBy ?? "";
 
@@ -163,7 +172,6 @@ class _ViewItemScreenState extends State<ViewItemScreen> {
       final chatService = ChatService();
 
       // Check for existing chat
-      // Check for existing chat
       final existingChat = await chatService.checkExistingChat(
         token,
         reportedBy,
@@ -191,7 +199,7 @@ class _ViewItemScreenState extends State<ViewItemScreen> {
         chatId = null;
       }
 
-// If no existing chat was found, create one
+      // If no existing chat was found, create one
       if (chatId == null) {
         chatId = await chatService.createChat(
           token,
@@ -233,8 +241,6 @@ class _ViewItemScreenState extends State<ViewItemScreen> {
       );
     }
   }
-
-  // No longer needed - we get the username from the user object directly
 
   @override
   Widget build(BuildContext context) {
