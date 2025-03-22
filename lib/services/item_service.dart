@@ -158,25 +158,30 @@ class ItemService {
     try {
       final headers = _getHeaders();
 
-
+      // Process images if provided
       if (imageBytes != null && imageBytes.isNotEmpty) {
         final List<ItemImage> images = [];
 
         for (int i = 0; i < imageBytes.length; i++) {
+          // Properly encode the image to base64
           final String base64Image = base64Encode(imageBytes[i]);
-          final String imageName = i < imageNames!.length ? imageNames[i] : 'image_${i+1}.jpg';
+          print('Image ${i+1} encoded to base64 (${base64Image.length} chars)');
+
+          final String imageName = imageNames != null && i < imageNames.length
+              ? imageNames[i]
+              : 'image_${i+1}.jpg';
 
           images.add(ItemImage(
             description: 'Image of ${item.itemName}',
-            image: 'data:image/jpeg;base64,$base64Image',
+            image: 'data:image/jpeg;base64,$base64Image',  // Use proper MIME prefix
             locationFound: item.locationFound,
-            dateTime: DateTime.now().toIso8601String().substring(11, 19), // HH:MM:SS
+            dateTime: DateTime.now().toIso8601String().substring(11, 19),
             status: item.status,
           ));
         }
 
-
-        final newItem = Item(
+        // Create a new item with the images
+        item = Item(
           itemId: item.itemId,
           itemName: item.itemName,
           description: item.description,
@@ -188,9 +193,6 @@ class ItemService {
           status: item.status,
           images: images,
         );
-
-
-        item = newItem;
       }
 
       final jsonData = item.toJson();
@@ -199,15 +201,13 @@ class ItemService {
 
       print("Creating item at URL: $url");
       print("With headers: $headers");
-      print("Sending JSON: $jsonBody");
+      print("Sending JSON: ${jsonBody.length > 1000 ? '${jsonBody.substring(0, 1000)}...' : jsonBody}");
 
       final response = await http.post(
         Uri.parse(url),
         headers: headers,
         body: jsonBody,
       );
-
-      _logResponse('Create Item', response);
 
       if (response.statusCode >= 200 && response.statusCode < 300) {
         try {
@@ -219,6 +219,7 @@ class ItemService {
         }
       } else {
         print('Failed to create item: ${response.statusCode}');
+        print('Response body: ${response.body}');
         return null;
       }
     } catch (e) {

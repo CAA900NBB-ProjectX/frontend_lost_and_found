@@ -141,6 +141,7 @@ class _UploadItemScreenState extends State<UploadItemScreen> {
     }
   }
 
+  // In _UploadItemScreenState._submitItem method
   Future<void> _submitItem() async {
     if (!_formKey.currentState!.validate()) return;
 
@@ -164,37 +165,44 @@ class _UploadItemScreenState extends State<UploadItemScreen> {
       // Format date for backend
       final formattedDate = _dateFound.toIso8601String();
 
-      // Use the already loaded user info
+      // Try to get the current user information first
+      var currentUser = await _userService.getCurrentUser();
+      String reporterUsername = _reporterUsername;
+      String contactEmail = _contactEmail;
+
+      // If we got user info, update the values
+      if (currentUser != null) {
+        reporterUsername = currentUser.username;
+        contactEmail = currentUser.email;
+      }
+
+      print('Creating item with reporter: $reporterUsername, contact: $contactEmail');
+
+      // Create the item object with user info
       final newItem = Item(
         itemName: _nameController.text,
         description: _descriptionController.text,
         categoryId: _categoryId,
         locationFound: _locationController.text,
         dateTimeFound: formattedDate,
-        reportedBy: _reporterUsername, // Use stored username
-        contactInfo: _contactEmail,    // Use stored email
+        reportedBy: reporterUsername,
+        contactInfo: contactEmail,
         status: _status,
       );
 
-      // First create the item
-      final createdItem = await _itemService.createItem(newItem);
-
-      if (createdItem != null && _imageBytes.isNotEmpty && createdItem.itemId != null) {
-        // Then upload images for this item
-        for (int i = 0; i < _imageBytes.length; i++) {
-          final success = await _itemService.uploadItemImage(
-            createdItem.itemId!,
-            _imageBytes[i],
-            'image_${i + 1}.jpg',
-          );
-
-          if (!success) {
-            setState(() {
-              _errorMessage = 'Warning: Some images may not have uploaded correctly';
-            });
-          }
+      // Create item with images if available
+      final List<String> imageNames = [];
+      if (_selectedImages != null) {
+        for (int i = 0; i < _selectedImages!.length; i++) {
+          imageNames.add(_selectedImages![i].name);
         }
       }
+
+      final createdItem = await _itemService.createItem(
+          newItem,
+          imageBytes: _imageBytes,
+          imageNames: imageNames
+      );
 
       setState(() {
         _isLoading = false;

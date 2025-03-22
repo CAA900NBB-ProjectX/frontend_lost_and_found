@@ -171,68 +171,48 @@ class UserService {
         return null;
       }
 
-      // Decode the token to extract claims
+      // Try to get user from backend API first
+      try {
+        final headers = await _getHeaders();
+        final url = '${ApiConfig.userMeUrl}';
+
+        print('Fetching current user profile from: $url');
+
+        final response = await http.get(Uri.parse(url), headers: headers);
+
+        if (response.statusCode == 200) {
+          final userData = json.decode(response.body);
+          return User.fromJson(userData);
+        }
+      } catch (e) {
+        print('Error fetching user profile from API: $e');
+        // Fall through to token extraction as backup
+      }
+
+      // Decode the token to extract claims as backup
       final tokenData = _authService.decodeToken(token);
       print('Token payload: $tokenData');
 
       // Try to find an email in the token
       String? email;
+      String? username;
 
-      // Check common email fields
-      if (tokenData.containsKey('email')) {
-        email = tokenData['email'];
-      } else if (tokenData.containsKey('sub') && tokenData['sub'].toString().contains('@')) {
-        email = tokenData['sub'];
-      } else {
-        // Look through all fields for anything that looks like an email
-        for (var entry in tokenData.entries) {
-          if (entry.value is String && entry.value.toString().contains('@')) {
-            email = entry.value;
-            break;
-          }
-        }
-      }
-
-      // If we found a valid email, try to get user by email
-      if (email != null && email.contains('@')) {
-        print('Using email from token: $email');
-        return await getUserByEmail(email);
-      }
-
-      // If no email, try to get a userId and use that instead
-      if (tokenData.containsKey('userId') || tokenData.containsKey('user_id') || tokenData.containsKey('id')) {
-        final userId = tokenData['userId'] ?? tokenData['user_id'] ?? tokenData['id'];
-        print('Using user ID from token: $userId');
-
-        if (userId is int) {
-          return await getUserById(userId);
-        } else if (userId is String) {
-          // Try to convert to int first
-          final intUserId = int.tryParse(userId);
-          if (intUserId != null) {
-            return await getUserById(intUserId);
-          }
-          // Otherwise use as string
-          return await getUserByUserId(userId);
-        }
-      }
-
-      // If we couldn't find either email or userId in token, create a minimal user
-      // from whatever information we can extract
-      final username = tokenData['preferred_username'] ??
+      // Extract username and email more aggressively
+      username = tokenData['preferred_username'] ??
+          tokenData['username'] ??
           tokenData['nickname'] ??
           tokenData['name'] ??
-          tokenData['sub'] ??
-          'User';
+          tokenData['sub'];
 
-      // Generate a placeholder email if none found
-      final placeholderEmail = '$username@example.com';
+      email = tokenData['email'] ??
+          tokenData['mail'] ??
+          tokenData['user_email'] ??
+          (tokenData['sub']?.toString().contains('@') ? tokenData['sub'] : null);
 
-      print('Creating minimal user with username: $username, email: $placeholderEmail');
-
+      // Create user with best information available
       return User(
-        username: username.toString(),
-        email: placeholderEmail,
+        username: username?.toString() ?? 'User',
+        email: email?.toString() ?? 'user@example.com',
       );
     } catch (e) {
       print('Error getting current user: $e');

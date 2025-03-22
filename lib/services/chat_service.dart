@@ -103,17 +103,24 @@ class ChatService {
   }
 
 
+  // In ChatService.createChat method
   Future<String?> createChat(String token, String receiverUsername, int itemId) async {
     try {
+      // Ensure the token is valid
+      if (token.isEmpty) {
+        print('Empty token provided to createChat');
+        return null;
+      }
+
+      // Use a more reliable request structure
       final response = await http.post(
-        Uri.parse('${ApiConfig.createChatUrl}'),
+        Uri.parse(ApiConfig.createChatUrl),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
           'ngrok-skip-browser-warning': '69420',
         },
         body: json.encode({
-          'token':token,
           'receiverId': receiverUsername,
           'itemId': itemId,
         }),
@@ -122,9 +129,16 @@ class ChatService {
       print('Create chat response status: ${response.statusCode}');
       print('Create chat response body: ${response.body}');
 
-      if (response.statusCode == 200 || response.statusCode == 201) {
+      if (response.statusCode >= 200 && response.statusCode < 300) {
         final data = json.decode(response.body);
-        return data['response'];
+
+        // Handle different response formats
+        if (data is Map<String, dynamic>) {
+          return data['response'] ?? data['id'] ?? data['chatId'];
+        } else if (data is String) {
+          return data;
+        }
+        return null;
       }
       return null;
     } catch (e) {
