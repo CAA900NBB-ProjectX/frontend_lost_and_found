@@ -8,19 +8,16 @@ import 'package:stomp_dart_client/stomp.dart';
 import 'package:stomp_dart_client/stomp_config.dart';
 import '/config/api_config.dart';
 
-
 class MessageType {
   static const String TEXT = "TEXT";
   static const String IMAGE = "IMAGE";
 }
-
 
 class MessageState {
   static const String SENT = "SENT";
   static const String DELIVERED = "DELIVERED";
   static const String READ = "READ";
 }
-
 
 class ChatMessage {
   final dynamic id;
@@ -31,7 +28,6 @@ class ChatMessage {
   final String receiverId;
   final DateTime createdAt;
   final List<int>? media;
-
 
   ChatMessage({
     required this.id,
@@ -45,7 +41,6 @@ class ChatMessage {
   });
 
   factory ChatMessage.fromJson(Map<String, dynamic> json) {
-
     dynamic messageId = json['id'];
     if (messageId is String && int.tryParse(messageId) != null) {
       messageId = int.parse(messageId);
@@ -62,26 +57,26 @@ class ChatMessage {
           ? DateTime.parse(json['createdAt'].toString())
           : DateTime.now(),
       media: json['media'] != null && json['media'] != ''
-          ? (json['media'] is List
-          ? List<int>.from(json['media'])
-          : null)
+          ? (json['media'] is List ? List<int>.from(json['media']) : null)
           : null,
     );
   }
 }
 
-
 class ChatService {
   StompClient? _stompClient;
 
-  final ValueNotifier<List<ChatMessage>> messages = ValueNotifier<List<ChatMessage>>([]);
+  final ValueNotifier<List<ChatMessage>> messages =
+      ValueNotifier<List<ChatMessage>>([]);
 
   final Map<String, List<ChatMessage>> _messagesCache = {};
 
-  Future<Map<String, dynamic>?> checkExistingChat(String token, String itemPostedUserId, int itemId) async {
+  Future<Map<String, dynamic>?> checkExistingChat(
+      String token, String itemPostedUserId, int itemId) async {
     try {
       final response = await http.get(
-        Uri.parse('${ApiConfig.checkChatUrl}?token=$token&ItemPostedUser=$itemPostedUserId&itemId=$itemId'),
+        Uri.parse(
+            '${ApiConfig.checkChatUrl}?token=$token&ItemPostedUser=$itemPostedUserId&itemId=$itemId'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
@@ -102,8 +97,8 @@ class ChatService {
     }
   }
 
-
-  Future<String?> createChat(String token, String receiverUsername, int itemId) async {
+  Future<String?> createChat(
+      String token, String receiverUsername, int itemId) async {
     try {
       final response = await http.post(
         Uri.parse('${ApiConfig.createChatUrl}'),
@@ -113,7 +108,7 @@ class ChatService {
           'ngrok-skip-browser-warning': '69420',
         },
         body: json.encode({
-          'token':token,
+          'token': token,
           'receiverId': receiverUsername,
           'itemId': itemId,
         }),
@@ -135,7 +130,6 @@ class ChatService {
 
   Future<List<ChatMessage>> getChatMessages(String chatId, String token) async {
     try {
-
       if (_messagesCache.containsKey(chatId)) {
         print('Returning cached messages for chat $chatId');
 
@@ -145,10 +139,9 @@ class ChatService {
         return _messagesCache[chatId]!;
       }
 
-
       final response = await http.get(
         Uri.parse('${ApiConfig.getChatMessagesUrl}/$chatId'),
-        headers:{
+        headers: {
           ...ApiConfig.headers,
           'Authorization': 'Bearer $token',
           'ngrok-skip-browser-warning': '69420',
@@ -162,14 +155,12 @@ class ChatService {
         final List<dynamic> messagesList = json.decode(response.body);
         print('Parsed ${messagesList.length} messages from server');
 
-        final chatMessages = messagesList.map((json) => ChatMessage.fromJson(json)).toList();
-
+        final chatMessages =
+            messagesList.map((json) => ChatMessage.fromJson(json)).toList();
 
         chatMessages.sort((a, b) => a.createdAt.compareTo(b.createdAt));
 
-
         _messagesCache[chatId] = chatMessages;
-
 
         messages.value = chatMessages;
 
@@ -183,10 +174,12 @@ class ChatService {
     }
   }
 
-  Future<List<Map<String, dynamic>>> getChatList(String token, int itemId, String itemPostedUserId) async {
+  Future<List<Map<String, dynamic>>> getChatList(
+      String token, int itemId, String itemPostedUserId) async {
     try {
       final response = await http.get(
-        Uri.parse('${ApiConfig.getChatListUrl}?token=$token&ItemPostedUser=$itemPostedUserId&itemId=$itemId'),
+        Uri.parse(
+            '${ApiConfig.getChatListUrl}?token=$token&ItemPostedUser=$itemPostedUserId&itemId=$itemId'),
         headers: {
           ...ApiConfig.headers,
           'Authorization': 'Bearer $token',
@@ -212,7 +205,7 @@ class ChatService {
     try {
       final response = await http.get(
         Uri.parse('${ApiConfig.getChatMessagesUrl}/$chatId'),
-        headers:{
+        headers: {
           ...ApiConfig.headers,
           'Authorization': 'Bearer $token',
           'ngrok-skip-browser-warning': '69420',
@@ -221,11 +214,10 @@ class ChatService {
 
       if (response.statusCode == 200) {
         final List<dynamic> messagesList = json.decode(response.body);
-        final chatMessages = messagesList.map((json) => ChatMessage.fromJson(json)).toList();
-
+        final chatMessages =
+            messagesList.map((json) => ChatMessage.fromJson(json)).toList();
 
         chatMessages.sort((a, b) => a.createdAt.compareTo(b.createdAt));
-
 
         _messagesCache[chatId] = chatMessages;
 
@@ -235,7 +227,6 @@ class ChatService {
       print('Error refreshing messages: $e');
     }
   }
-
 
   Future<bool> sendMessage({
     required String content,
@@ -255,31 +246,18 @@ class ChatService {
         'chatId': chatId,
       };
 
-      final response = await http.post(
-        Uri.parse(ApiConfig.sendMessageUrl),
-        headers: {
-          ...ApiConfig.headers,
-          'Authorization': 'Bearer $token',
-          'ngrok-skip-browser-warning': '69420',
-        },
+      _stompClient?.send(
+        destination: '/app/messages',
         body: json.encode(message),
       );
 
-      print('Send message response status: ${response.statusCode}');
-      print('Send message response body: ${response.body}');
-
-      if (response.statusCode == 201 || response.statusCode == 200) {
-
-        _refreshMessages(chatId, token);
-        return true;
-      }
-      return false;
+      _refreshMessages(chatId, token);
+      return true;
     } catch (e) {
       print('Error sending message: $e');
       return false;
     }
   }
-
 
   void connectWebSocket(String chatId, String userId) {
     try {
@@ -287,37 +265,37 @@ class ChatService {
 
       _stompClient = StompClient(
         config: StompConfig.SockJS(
-          url: ApiConfig.wsEndpoint,
+          url: 'http://localhost:8085/ws',
           onConnect: (frame) {
             print('Connected to WebSocket');
 
-
             _stompClient?.subscribe(
-              destination: '/chat/$chatId',
+              destination: '/topic/messages',
               callback: (frame) {
-                print('Received message from WebSocket: ${frame.body}');
                 if (frame.body != null) {
                   try {
                     final data = json.decode(frame.body!);
                     final newMessage = ChatMessage.fromJson(data);
+                    if (userId == newMessage.receiverId) {
+                      _messagesCache
+                          .putIfAbsent(chatId, () => [])
+                          .add(newMessage);
 
-
-                    if (_messagesCache.containsKey(chatId)) {
-                      _messagesCache[chatId]!.add(newMessage);
-                    } else {
-                      _messagesCache[chatId] = [newMessage];
+                      if (messages.value.isNotEmpty) {
+                        messages.value = List.from(messages.value)
+                          ..removeLast()
+                          ..add(newMessage);
+                      } else {
+                        messages.value = [newMessage];
+                      }
                     }
-
-
-                    final updatedMessages = List<ChatMessage>.from(messages.value);
-                    updatedMessages.add(newMessage);
-                    messages.value = updatedMessages;
                   } catch (e) {
                     print('Error processing WebSocket message: $e');
                   }
                 }
               },
             );
+            print('Subscribed to /topic/messages');
           },
           onWebSocketError: (error) => print('WebSocket error: $error'),
           onStompError: (frame) => print('STOMP error: ${frame.body}'),
@@ -329,7 +307,6 @@ class ChatService {
       _stompClient?.activate();
     } catch (e) {
       print('Failed to connect to WebSocket: $e');
-
     }
   }
 
