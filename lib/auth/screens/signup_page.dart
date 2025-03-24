@@ -1,7 +1,12 @@
 import 'package:flutter/material.dart';
-import 'dart:convert';
 import '../services/auth_service.dart';
+import '../../helpers/password_strength.dart';
 
+class PasswordStrengthChecker {
+  static CustomPassStrength? calculate({required String text}) {
+    return CustomPassStrength.calculate(text: text);
+  }
+}
 class SignupPage extends StatefulWidget {
   const SignupPage({super.key});
 
@@ -16,6 +21,8 @@ class _SignupPageState extends State<SignupPage> {
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
   final _authService = AuthService();
+  CustomPassStrength? _passwordStrength;
+
 
   bool _isLoading = false;
   String? _errorMessage;
@@ -186,6 +193,11 @@ class _SignupPageState extends State<SignupPage> {
             _isPasswordHidden = !_isPasswordHidden;
           });
         },
+        onChanged: (text) {
+          setState(() {
+            _passwordStrength = PasswordStrengthChecker.calculate(text: text);
+          });
+        },
         validator: (value) {
           if (value == null || value.isEmpty) {
             return 'Please enter password';
@@ -196,6 +208,10 @@ class _SignupPageState extends State<SignupPage> {
           return null;
         },
       ),
+      if (_passwordStrength != null) ...[
+        const SizedBox(height: 8),
+        _buildPasswordStrengthIndicator(),
+      ],
       const SizedBox(height: 16),
       _buildInputLabel("Confirm Password"),
       const SizedBox(height: 8),
@@ -226,7 +242,7 @@ class _SignupPageState extends State<SignupPage> {
         child: ElevatedButton(
           onPressed: _isLoading ? null : _signup,
           style: ElevatedButton.styleFrom(
-            backgroundColor: const Color(0xFF8BC34A), // Green accent
+            backgroundColor: const Color(0xFF8BC34A),
             foregroundColor: Colors.black,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(12),
@@ -280,7 +296,44 @@ class _SignupPageState extends State<SignupPage> {
       ),
     ];
   }
-
+  Widget _buildPasswordStrengthIndicator() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          "Password Strength",
+          style: TextStyle(
+            color: Colors.grey[300],
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        const SizedBox(height: 4),
+        // Strength Bar
+        Container(
+          height: 6,
+          width: double.infinity,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(4),
+            color: Colors.grey[700],
+          ),
+          child: FractionallySizedBox(
+            alignment: Alignment.centerLeft,
+            widthFactor: _passwordStrength?.widthPerc ?? 0,
+            child: Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(4),
+                color: _passwordStrength?.statusColor ?? Colors.transparent,
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 4),
+        if (_passwordStrength != null)
+          _passwordStrength!.statusWidget,
+      ],
+    );
+  }
   Widget _buildInputLabel(String label) {
     return Padding(
       padding: const EdgeInsets.only(left: 4),
@@ -304,6 +357,7 @@ class _SignupPageState extends State<SignupPage> {
     bool? isPasswordHidden,
     VoidCallback? onTogglePassword,
     String? Function(String?)? validator,
+    ValueChanged<String>? onChanged,
   }) {
     return TextFormField(
       controller: controller,
@@ -349,6 +403,7 @@ class _SignupPageState extends State<SignupPage> {
         ),
       ),
       validator: validator,
+      onChanged: onChanged,
     );
   }
 
